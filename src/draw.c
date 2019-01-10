@@ -34,7 +34,7 @@ static void draw_full_screen_road(road_t *road) {
     uint32_t road_bottom = (window_size.y / 2)+(road->num_lanes);
     uint32_t road_left   = (window_size.x / 2)-(road->length/2);
     uint32_t road_right  = (window_size.x / 2)+(road->length/2);
-    for(uint32_t x = road_left; x <= road_right; x++) {
+    for(uint32_t x = road_left; x < road_right; x++) {
         mvprintw(road_top, x, "-");
         mvprintw(road_bottom, x, "-");
         if(x % 2 == 0) {
@@ -42,6 +42,10 @@ static void draw_full_screen_road(road_t *road) {
                 mvprintw(y, x, "-");
             }
         }
+    }
+
+    for(uint32_t i = 0; i < road->num_cars; i++) {
+        mvprintw(road_top + road->cars[i].lane*2 + 1, road_left + road->cars[i].pos, "D");
     }
 }
 
