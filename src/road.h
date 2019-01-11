@@ -3,7 +3,6 @@
 #include <stddef.h>
 #include <car.h>
 
-
 typedef struct road {
     uint32_t num_lanes;
     uint32_t length;

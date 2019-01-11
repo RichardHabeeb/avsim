@@ -2,7 +2,7 @@
 
 CC=@gcc
 LDFLAGS=-lncurses
-CFLAGS=-Isrc -DDEBUG
+CFLAGS=-Isrc -DDEBUG -Wall
 
 BUILD_DIR=build
 
