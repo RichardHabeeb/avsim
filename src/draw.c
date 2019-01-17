@@ -1,83 +1,111 @@
-#include <ncurses.h>
+#include <stdio.h>
 #include <stdint.h>
+#include <SDL2/SDL.h>
 
 #include <draw.h>
-#include <pos.h>
 #include <road.h>
+#include <car.h>
 
-#ifdef DEBUG
-static uint64_t frame_cnt;
-#endif
+static SDL_Window *window = NULL;
+//static SDL_Surface *surface = NULL;
+static SDL_Renderer *renderer = NULL;
 
-static pt32_t window_size;
+void setup_draw(void) {
+    if(SDL_Init(SDL_INIT_VIDEO) < 0) {
+        //TODO error
+    }
 
-#define DEFAULT_COLOR 1
-#define STRIPE_COLOR 2
-#define CAR_COLOR 3
+    window = SDL_CreateWindow(
+            "AVSIM",
+            SDL_WINDOWPOS_UNDEFINED,
+            SDL_WINDOWPOS_UNDEFINED,
+            WINDOW_SIZE_X,
+            WINDOW_SIZE_Y,
+            SDL_WINDOW_SHOWN);
+    if(window == NULL) {
+        //TODO error
+    }
 
-void setup_draw() {
-    initscr();
-    start_color();
-    noecho();
-    nodelay(stdscr, TRUE);
-    curs_set(FALSE);
-    init_pair(DEFAULT_COLOR, COLOR_WHITE, COLOR_BLACK);
-    init_pair(STRIPE_COLOR, COLOR_YELLOW, COLOR_BLACK);
-    init_pair(CAR_COLOR, COLOR_BLUE, COLOR_BLUE);
+    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    if(renderer == NULL) {
+        //TODO error
+    }
 
-#ifdef DEBUG
-    frame_cnt = 0;
-#endif
+    //surface = SDL_GetWindowSurface(window);
+    //SDL_FillRect(surface, NULL, SDL_MapRGB(surface->format, 0xee, 0xee,0xee));
+
+    //SDL_UpdateWindowSurface(window);
+
 }
 
-void cleanup_draw() {
-    endwin();
+
+void cleanup_draw(void) {
+    SDL_DestroyWindow(window);
+    SDL_Quit();
 }
 
 
 
 static void draw_full_screen_road(road_t *road) {
-    uint32_t road_top    = (window_size.y / 2)-(road->num_lanes);
-    uint32_t road_bottom = (window_size.y / 2)+(road->num_lanes);
-    uint32_t road_left   = 1;
-    uint32_t road_right  = window_size.x-1;
+    uint32_t i,j;
+
+    uint32_t road_width_px  = WINDOW_SIZE_X*14/16;
+
+    uint32_t px_per_meter = road_width_px / road->length;
+    uint32_t lane_height_px = 5*px_per_meter;
     
-    for(uint32_t x = road_left; x < road_right; x++) {
-        attron(COLOR_PAIR(DEFAULT_COLOR));
-        mvprintw(road_top, x, "-");
-        mvprintw(road_bottom, x, "-");
-        attron(COLOR_PAIR(STRIPE_COLOR));
-        if(x % 2 == 0) {
-            for(uint32_t y = road_top+2; y < road_bottom; y+=2) {
-                mvprintw(y, x, "-");
+    uint32_t road_height_px = lane_height_px*road->num_lanes;
+    uint32_t road_top = WINDOW_SIZE_Y/2 - road_height_px/2;
+    uint32_t road_left = WINDOW_SIZE_X/2 - road_width_px/2;
+
+    uint32_t stripe_length_px = 1*px_per_meter;
+    uint32_t stripe_height_px = stripe_length_px/16;
+
+    stripe_length_px = stripe_length_px > 0 ? stripe_length_px : 1;
+    stripe_height_px = stripe_height_px > 0 ? stripe_height_px : 1;
+
+    SDL_Rect road_surface = {road_left, road_top, road_width_px, road_height_px};
+    SDL_SetRenderDrawColor(renderer, 0x30, 0x30, 0x30, 0xFF);
+    SDL_RenderFillRect(renderer, &road_surface);
+ 
+    if(road->num_lanes > 1) {
+        for(i = 1; i < road->num_lanes; i++) {
+            for(j = 0; j < road_width_px; j+=4*stripe_length_px) {
+                SDL_Rect lane_stripe = {
+                    road_left + j,
+                    road_top + lane_height_px + (i-1)*lane_height_px,
+                    stripe_length_px,
+                    stripe_height_px};
+                SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0x55, 0xFF);
+                SDL_RenderFillRect(renderer, &lane_stripe);
             }
         }
     }
-    uint32_t road_scale = road->length / (road_right-road_left);
-    for(uint32_t i = 0; i < road->num_cars; i++) {
-        attron(COLOR_PAIR(CAR_COLOR));
+
+    uint32_t car_height_px = 3*px_per_meter;
+
+    for(i = 0; i < road->num_cars; i++) {
         car_t *car = &road->cars[i];
-        for(uint32_t j = 0; j < car->length; j++) {
-            mvprintw(road_top + car->lane*2 + 1, road_left + (car->pos/road_scale + j)%(road_right-road_left), " ");
-        }
+        SDL_Rect car_rect = {
+            road_left + car->pos*px_per_meter,
+            road_top + (lane_height_px/2 - car_height_px/2) + car->lane*lane_height_px,
+            car->length*px_per_meter,
+            car_height_px};
+        SDL_RenderFillRect(renderer, &car_rect);
+
     }
 }
 
-void draw(road_t* roads) {
-    clear();
 
-    getmaxyx(stdscr, window_size.y, window_size.x);
+/* Single road drawer */
+void draw(road_t *road) {
+    SDL_SetRenderDrawColor(renderer, 0xAA, 0xAA, 0xAA, 0xFF);
+    SDL_RenderClear(renderer);
 
-    /* Single road drawing, for now */
-    if(roads != NULL) {
-        draw_full_screen_road(roads);
-    }
+    draw_full_screen_road(road);
 
-#ifdef DEBUG
-    attron(COLOR_PAIR(DEFAULT_COLOR));
-    mvprintw(window_size.y-1, 0, "window_size:(%u,%u); Frame:#%u", window_size.x, window_size.y, ++frame_cnt);
-#endif
 
-    refresh();
+    SDL_RenderPresent(renderer);
+
 }
 

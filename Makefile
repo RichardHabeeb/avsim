@@ -1,15 +1,16 @@
 
 
 CC=@gcc
-LDFLAGS=-lncurses
+LDFLAGS=-lSDL2
 CFLAGS=-Isrc -DDEBUG -Wall
+OBJ_OUTPUT=avsim
 
 BUILD_DIR=build
 
 all:
 	@echo "Building Simulator"
 	@mkdir -p $(BUILD_DIR)
-	$(CC) src/*.c $(CFLAGS) $(LDFLAGS) -o $(BUILD_DIR)/avsim
+	$(CC) src/*.c $(CFLAGS) $(LDFLAGS) -o $(BUILD_DIR)/$(OBJ_OUTPUT)
 
 clean:
 	rm -rf $(BUILD_DIR)
