@@ -31,10 +31,23 @@ car_t * apply_car_sensors(road_t *road, car_t *car) {
     sensor_view_t view;
     build_sensor_view(car, road, &view);
 
-    //for(uint32_t i = 0; i < road->num_cars; i++) {
-    //    
-    //}
-    return NULL;
+    //TODO quad tree
+    car_t * sensed_list = NULL;
+    for(uint32_t i = 0; i < road->num_cars; i++) {
+        car_t * c = &road->cars[i];
+
+        if(
+                c != car && 
+                c->pos >= view.b &&
+                sub_mod(c->pos, c->length, road->length) <= view.f &&
+                c->lane >= view.l &&
+                c->lane <= view.r)
+        {
+            c->sensor_list_next = sensed_list;
+            sensed_list = c;
+        }
+    }
+    return sensed_list;
 }
 
 void road_tick(road_t *road) {
@@ -43,7 +56,7 @@ void road_tick(road_t *road) {
     for(uint32_t i = 0; i < road->num_cars; i++) {
         car_t *car = &road->cars[i];
 
-        car_tick(car);
+        car_tick(car, apply_car_sensors(road, car));
         correct_car_pos(road, car);
     }
 }

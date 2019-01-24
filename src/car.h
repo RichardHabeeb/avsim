@@ -28,4 +28,4 @@ typedef struct sensor_view {
     uint32_t b;
 } sensor_view_t;
 
-void car_tick(car_t *);
+void car_tick(car_t *, car_t * nearby_cars);

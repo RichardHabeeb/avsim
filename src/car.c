@@ -2,7 +2,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include <road.h>
 #include <car.h>
 
 
@@ -20,13 +19,20 @@ static void apply_dynamics(car_t *car) {
 
 
 
+static void build_sensor_reading_list() {
+}
+
 
 static void driver_control() {
 
 }
 
 
-void car_tick(car_t *car) {
+
+
+
+void car_tick(car_t *car, car_t *nearby_cars) {
+    build_sensor_reading_list();
 
     driver_control();
 
