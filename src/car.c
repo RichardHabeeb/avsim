@@ -2,19 +2,19 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include <config.h>
 #include <car.h>
 
-
+#include <stdio.h>
 
 static void apply_dynamics(car_t *car) {
     if(car == NULL) return;
-    
-    car->spd += car->acc;
+    car->spd += car->acc/CFG_TICKS_PER_S;
     if(car->spd > car->max_spd) {
         car->spd = car->max_spd;
     }
 
-    car->pos += car->spd;
+    car->pos += car->spd/CFG_TICKS_PER_S;
 }
 
 

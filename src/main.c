@@ -1,25 +1,20 @@
-#include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <unistd.h>
 #include <time.h>
 #include <string.h>
 #include <SDL2/SDL.h>
 
+#include <config.h>
 #include <draw.h>
 #include <road.h>
 #include <car.h>
 
-#define TICK_DURATION_NS 1000*1000*0
-#define ROAD_NUM_LANES 4
-#define ROAD_LENGTH 250
-#define NUM_CARS 2
 
-
-
-
-/* Single road, for now */
 static road_t single_road;
-static car_t cars[NUM_CARS];
+static car_t cars[CFG_NUM_CARS];
+
 
 static bool handle_events() {
     SDL_Event e;
@@ -39,6 +34,7 @@ static bool handle_events() {
     return true;
 }
 
+
 static bool tick() {
     
     if(handle_events() == false) {
@@ -52,27 +48,37 @@ static bool tick() {
     return true;
 }
 
+static void setup_single_road() {
+    single_road.num_lanes = CFG_SINGLE_NUM_LANES;
+    single_road.length = CFG_SINGLE_LEN_M * CFG_SPACE_SCALE;
+    single_road.num_cars = CFG_NUM_CARS;
+    single_road.cars = cars;
+}
+
+void setup_car_params(car_t * car, road_t * road) {
+    memset(car, 0, sizeof(car_t));
+    car->length  = (CFG_CAR_MIN_LEN_M      + rand()%CFG_CAR_MAX_LEN_M)     * CFG_SPACE_SCALE;
+    car->spd     = (CFG_CAR_MIN_SPD_MS     + rand()%CFG_CAR_MAX_SPD_MS)    * CFG_SPACE_SCALE;
+    car->max_spd = (CFG_CAR_MIN_TOP_SPD_MS + rand()%CFG_CAR_MAX_TOP_SPD_MS)* CFG_SPACE_SCALE;
+    car->lane    = (rand()%road->num_lanes);
+    car->pos     = (rand()%road->length);
+}
+
 
 int main(int argc, char* argv[]) {
+    srand(time(NULL));
     setup_draw();
 
-    single_road.num_lanes = ROAD_NUM_LANES;
-    single_road.length = ROAD_LENGTH;
-    single_road.num_cars = NUM_CARS;
-    single_road.cars = cars;
-    memset(cars, 0, sizeof(car_t)*NUM_CARS);
-    cars[0].spd = 0;
-    cars[0].max_spd = 40;
+#ifdef CFG_SINGLE_ROAD
+    setup_single_road();
 
-    cars[1].spd = 10;
-    cars[1].max_spd = 40;
-    cars[1].lane = 1;
-    cars[0].length = 4;
-    cars[1].length = 6;
-    cars[0].acc=1;
+    for(uint32_t i = 0; i < CFG_NUM_CARS; i++) {
+        setup_car_params(&single_road.cars[i], &single_road);
+    }
+#endif
 
     while(tick()) {
-        nanosleep(&(const struct timespec){.tv_sec=1, .tv_nsec=TICK_DURATION_NS}, NULL);
+        usleep(CFG_TICK_SLP_US);
     }
 
     cleanup_draw();

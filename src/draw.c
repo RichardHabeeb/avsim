@@ -2,12 +2,12 @@
 #include <stdint.h>
 #include <SDL2/SDL.h>
 
+#include <config.h>
 #include <draw.h>
 #include <road.h>
 #include <car.h>
 
 static SDL_Window *window = NULL;
-//static SDL_Surface *surface = NULL;
 static SDL_Renderer *renderer = NULL;
 
 void setup_draw(void) {
@@ -16,7 +16,7 @@ void setup_draw(void) {
     }
 
     window = SDL_CreateWindow(
-            "AVSIM",
+            "Autonomous Car Simulator",
             SDL_WINDOWPOS_UNDEFINED,
             SDL_WINDOWPOS_UNDEFINED,
             WINDOW_SIZE_X,
@@ -30,12 +30,6 @@ void setup_draw(void) {
     if(renderer == NULL) {
         //TODO error
     }
-
-    //surface = SDL_GetWindowSurface(window);
-    //SDL_FillRect(surface, NULL, SDL_MapRGB(surface->format, 0xee, 0xee,0xee));
-
-    //SDL_UpdateWindowSurface(window);
-
 }
 
 
@@ -51,7 +45,7 @@ static void draw_full_screen_road(road_t *road) {
 
     uint32_t road_width_px  = WINDOW_SIZE_X*14/16;
 
-    uint32_t px_per_meter = road_width_px / road->length;
+    uint32_t px_per_meter = road_width_px / (road->length / CFG_SPACE_SCALE);
     uint32_t lane_height_px = 5*px_per_meter;
     
     uint32_t road_height_px = lane_height_px*road->num_lanes;
@@ -87,9 +81,9 @@ static void draw_full_screen_road(road_t *road) {
     for(i = 0; i < road->num_cars; i++) {
         car_t *car = &road->cars[i];
         SDL_Rect car_rect = {
-            road_left + car->pos*px_per_meter,
+            road_left + car->pos*px_per_meter/CFG_SPACE_SCALE,
             road_top + (lane_height_px/2 - car_height_px/2) + car->lane*lane_height_px,
-            car->length*px_per_meter,
+            car->length*px_per_meter/CFG_SPACE_SCALE,
             car_height_px};
         SDL_RenderFillRect(renderer, &car_rect);
 
@@ -97,7 +91,6 @@ static void draw_full_screen_road(road_t *road) {
 }
 
 
-/* Single road drawer */
 void draw(road_t *road) {
     SDL_SetRenderDrawColor(renderer, 0xAA, 0xAA, 0xAA, 0xFF);
     SDL_RenderClear(renderer);
