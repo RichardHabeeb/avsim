@@ -57,11 +57,14 @@ static void setup_single_road() {
 
 void setup_car_params(car_t * car, road_t * road) {
     memset(car, 0, sizeof(car_t));
-    car->length  = (CFG_CAR_MIN_LEN_M      + rand()%CFG_CAR_MAX_LEN_M)     * CFG_SPACE_SCALE;
-    car->spd     = (CFG_CAR_MIN_SPD_MS     + rand()%CFG_CAR_MAX_SPD_MS)    * CFG_SPACE_SCALE;
-    car->max_spd = (CFG_CAR_MIN_TOP_SPD_MS + rand()%CFG_CAR_MAX_TOP_SPD_MS)* CFG_SPACE_SCALE;
+    car->length  = (CFG_CAR_MIN_LEN_M      + rand()%(CFG_CAR_MAX_LEN_M - CFG_CAR_MIN_LEN_M))*CFG_SPACE_SCALE;
+    car->spd     = (CFG_CAR_MIN_SPD_MS     + rand()%(CFG_CAR_MAX_SPD_MS - CFG_CAR_MIN_SPD_MS))*CFG_SPACE_SCALE;
+    car->max_spd = (CFG_CAR_MIN_TOP_SPD_MS + rand()%(CFG_CAR_MAX_TOP_SPD_MS - CFG_CAR_MIN_TOP_SPD_MS))*CFG_SPACE_SCALE;
     car->lane    = (rand()%road->num_lanes);
     car->pos     = (rand()%road->length);
+    car->front_sensor_range = CFG_CAR_FRONT_RANGE_M*CFG_SPACE_SCALE;
+    car->rear_sensor_range = CFG_CAR_REAR_RANGE_M*CFG_SPACE_SCALE;
+    car->side_sensor_range = CFG_CAR_SIDE_RANGE_LANES;
 }
 
 

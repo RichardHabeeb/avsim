@@ -22,16 +22,17 @@ typedef struct car {
 
 
 typedef struct sensor_view {
-    uint32_t l;
-    uint32_t r;
-    uint32_t f;
-    uint32_t b;
+    uint32_t left;
+    uint32_t right;
+    uint32_t front;
+    uint32_t back;
 } sensor_view_t;
 
 typedef struct sensor_reading {
     uint32_t pos;
-    uint32_t length;
+    uint32_t len;
     uint32_t lane;
+    uint32_t spd;
 } sensor_reading_t;
 
 void car_tick(car_t *, car_t * nearby_cars);
