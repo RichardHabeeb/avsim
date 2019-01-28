@@ -3,7 +3,7 @@
 
 #define CFG_TICK_SLP_US (1000*10)
 #define CFG_TICKS_PER_S (1000*1000 / CFG_TICK_SLP_US)
-#define CFG_NUM_CARS (3)
+#define CFG_NUM_CARS (10)
 #define CFG_SPACE_SCALE (1000)
 
 /* CAR PARAMS */
@@ -24,7 +24,7 @@
 #define CFG_SINGLE_ROAD
 #ifdef CFG_SINGLE_ROAD
 
-#define CFG_SINGLE_NUM_LANES 1
+#define CFG_SINGLE_NUM_LANES 6
 #define CFG_SINGLE_LEN_M 200
 
 #endif

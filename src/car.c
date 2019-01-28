@@ -49,34 +49,68 @@ static uint32_t build_sensor_reading_list(car_t *nearby_cars, sensor_reading_t *
 
 plan_type_t driver_control(car_t * car, sensor_reading_t *readings, uint32_t num_readings, plan_action_t * action) {
     //TODO relocate to a more modular location
+    //TODO add road map/geometry to driver function
+    uint32_t i;
     plan_type_t ret = PLAN_NONE;
+    bool left_lane_free = true;
+    bool right_lane_free = true;
+
     
     /* Look for slower cars/obstructions in front of us */
     uint32_t target_spd = car->top_spd;
 
-    for(uint32_t i = 0; i < num_readings; i++) {
-        if( readings[i].type == SENSOR_READING_CAR &&
-            readings[i].data.car.lane == car->lane) 
-        {
+    for(i = 0; i < num_readings; i++) {
+        /* We only know about cars now */
+        if(readings[i].type != SENSOR_READING_CAR) continue;
+
+        sensor_reading_car_t * nearby_car = &readings[i].data.car;
+
+        /* Search our lane */
+        if(nearby_car->lane == car->lane) {
             
-            int32_t spd_diff = car->spd - readings[i].data.car.spd;
-             //TODO add road map/geometry to driver function
-            int32_t next_tick_predict_pos = (readings[i].data.car.pos + 
-                (readings[i].data.car.spd + CFG_CAR_TOP_DEC*CFG_SPACE_SCALE/CFG_TICKS_PER_S)/CFG_TICKS_PER_S)%(CFG_SINGLE_LEN_M*CFG_SPACE_SCALE);
+            int32_t spd_diff = car->spd - nearby_car->spd;
+
+            int32_t next_tick_predict_pos = (
+                    nearby_car->pos + 
+                    (nearby_car->spd + CFG_CAR_TOP_DEC*CFG_SPACE_SCALE/CFG_TICKS_PER_S)/CFG_TICKS_PER_S
+                )%(CFG_SINGLE_LEN_M*CFG_SPACE_SCALE);
             
-            int32_t safety_zone = sub_mod(next_tick_predict_pos, readings[i].data.car.len + car->pos, CFG_SINGLE_LEN_M*CFG_SPACE_SCALE);
+            int32_t safety_zone = sub_mod(next_tick_predict_pos, 
+                                          nearby_car->len + car->pos,
+                                          CFG_SINGLE_LEN_M*CFG_SPACE_SCALE);
             
-            int32_t pos_diff = sub_mod(readings[i].data.car.pos, readings[i].data.car.len + car->pos, CFG_SINGLE_LEN_M*CFG_SPACE_SCALE);
+            int32_t pos_diff = sub_mod(nearby_car->pos,
+                                       nearby_car->len + car->pos,
+                                       CFG_SINGLE_LEN_M*CFG_SPACE_SCALE);
 
             //printf("Car in front %i %i\n", spd_diff, pos_diff);
             if(spd_diff > 0 && pos_diff < car->front_sensor_range) {
-                target_spd = readings[i].data.car.spd;
+                target_spd = nearby_car->spd;
             }
 
+        } else if(nearby_car->lane == car->lane-1) {
+            left_lane_free = false; //TODO calculate safe space
+        } else if(nearby_car->lane == car->lane+1) {
+            right_lane_free = false;
         }
     }
+
+
+    if(target_spd < car->top_spd) {
+
+        if(car->lane > 0 && left_lane_free) {
+            target_spd = car->top_spd;
+            ret |= PLAN_CHANGE_LANE;
+            action->target_lane = car->lane-1;
+        } else if(car->lane < CFG_SINGLE_NUM_LANES-1 && right_lane_free) {
+            target_spd = car->top_spd;
+            ret |= PLAN_CHANGE_LANE;
+            action->target_lane = car->lane+1;
+        }
+    }
+
     ret |= PLAN_CHANGE_SPD;
-    action->target_spd = target_spd;
+    action->target_spd = target_spd; 
     
     return ret;
 }
@@ -101,7 +135,8 @@ void car_tick(car_t *car, car_t *nearby_cars) {
     }
 
     if(plan & PLAN_CHANGE_LANE) {
-
+        //TODO change from instantaneous
+        car->lane = action.target_lane;
     }
 
     apply_dynamics(car);
