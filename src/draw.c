@@ -123,7 +123,11 @@ static void draw_full_screen_road(road_t *road) {
             car->length*px_per_meter/CFG_SPACE_SCALE,
             car_height_px
         };
-        SDL_SetRenderDrawColor(renderer, 0xFF, 0x00, 0x00, 0xFF);
+        if(car->acc >= 0) {
+            SDL_SetRenderDrawColor(renderer, 0x00, 0xFF, 0x00, 0xFF);
+        } else {
+           SDL_SetRenderDrawColor(renderer, 0xFF, 0x00, 0x00, 0xFF);
+        }
         SDL_RenderFillRect(renderer, &car_rect);
 
     }
