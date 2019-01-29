@@ -22,7 +22,7 @@ static void apply_dynamics(car_t *car) {
 
 static void speed_control_loop(car_t *car, uint32_t target_speed) {
     //TODO make this better with PID or something
-    car->acc = (car->spd > target_speed) ? car->top_dec : ((car->spd == target_speed) ? 0 : car->top_acc); 
+    car->acc = (car->spd > target_speed) ? car->top_dec : ((car->spd == target_speed) ? 0 : car->top_acc);
 }
 
 
@@ -70,21 +70,19 @@ plan_type_t driver_control(car_t * car, sensor_reading_t *readings, uint32_t num
             
             int32_t spd_diff = car->spd - nearby_car->spd;
 
-            int32_t next_tick_predict_pos = (
-                    nearby_car->pos + 
-                    (nearby_car->spd + CFG_CAR_TOP_DEC*CFG_SPACE_SCALE/CFG_TICKS_PER_S)/CFG_TICKS_PER_S
-                )%(CFG_SINGLE_LEN_M*CFG_SPACE_SCALE);
-            
-            int32_t safety_zone = sub_mod(next_tick_predict_pos, 
-                                          nearby_car->len + car->pos,
-                                          CFG_SINGLE_LEN_M*CFG_SPACE_SCALE);
-            
-            int32_t pos_diff = sub_mod(nearby_car->pos,
-                                       nearby_car->len + car->pos,
-                                       CFG_SINGLE_LEN_M*CFG_SPACE_SCALE);
+            int32_t pos_diff = sub_mod(nearby_car->pos, nearby_car->len + car->pos, CFG_SINGLE_LEN_M*CFG_SPACE_SCALE);
 
-            //printf("Car in front %i %i\n", spd_diff, pos_diff);
-            if(spd_diff > 0 && pos_diff < car->front_sensor_range) {
+            /* From Mobileye 2017 Paper */
+            int32_t d_min = 
+                car->spd/CFG_TICKS_PER_S + 
+                CFG_CAR_TOP_ACC*CFG_SPACE_SCALE/(2*CFG_TICKS_PER_S*CFG_TICKS_PER_S) +
+                (int32_t)((car->spd + CFG_CAR_TOP_ACC*CFG_SPACE_SCALE/CFG_TICKS_PER_S)*
+                (car->spd + CFG_CAR_TOP_ACC*CFG_SPACE_SCALE/CFG_TICKS_PER_S))/
+                (-CFG_CAR_TOP_DEC*CFG_SPACE_SCALE) -
+                (int32_t)nearby_car->spd*nearby_car->spd/(-2*CFG_CAR_TOP_DEC*CFG_SPACE_SCALE);
+
+            //printf("Car in front %i %i\n", pos_diff, d_min);
+            if(spd_diff > 0 && pos_diff < car->front_sensor_range && pos_diff < d_min) {
                 target_spd = nearby_car->spd;
             }
 
