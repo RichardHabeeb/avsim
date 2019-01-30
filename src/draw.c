@@ -17,7 +17,7 @@ void setup_draw(void) {
     }
 
     window = SDL_CreateWindow(
-            "Autonomous Car Simulator",
+            "Autonomous Car Simulator (Press SPACE to pause, Q to quit)",
             SDL_WINDOWPOS_UNDEFINED,
             SDL_WINDOWPOS_UNDEFINED,
             WINDOW_SIZE_X,

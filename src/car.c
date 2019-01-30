@@ -107,7 +107,9 @@ plan_type_t driver_control(
                 }
             }
 
-        } else if(  nearby_car->lane+1 == car->lane || 
+        }
+        
+        if(         nearby_car->lane+1 == car->lane || 
                     (nearby_car->lane == car->lane && nearby_car->l_blinker) ||
                     (nearby_car->lane+2 == car->lane && nearby_car->r_blinker)) 
         {

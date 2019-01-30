@@ -15,6 +15,8 @@
 static road_t single_road;
 static car_t cars[CFG_NUM_CARS];
 
+static bool paused = false;
+
 
 static bool handle_events() {
     SDL_Event e;
@@ -26,6 +28,9 @@ static bool handle_events() {
                 case SDLK_q:
                 case SDLK_ESCAPE:
                     return false;
+                case SDLK_SPACE:
+                    paused = !paused;
+                    break;
                 default:
                     break;
             }
@@ -36,10 +41,12 @@ static bool handle_events() {
 
 
 static bool tick() {
-    
+
     if(handle_events() == false) {
         return false;
     }
+
+    if(paused) return true;
 
     road_tick(&single_road);
 
