@@ -79,8 +79,11 @@ plan_type_t driver_control(
 
         const sensor_reading_car_t * nearby_car = &readings[i].data.car;
 
-        /* Search our lane */
-        if(nearby_car->lane == car->lane) {
+        /* Search our lane or changing lane cars */
+        if( nearby_car->lane == car->lane || 
+            (nearby_car->lane+1 == car->lane && nearby_car->l_blinker) ||
+            (nearby_car->lane-1 == car->lane && nearby_car->r_blinker)) 
+        {
             
             int32_t pos_diff = sub_mod(nearby_car->pos, nearby_car->len + car->pos, CFG_SINGLE_LEN_M*CFG_SPACE_SCALE);
 
@@ -104,9 +107,15 @@ plan_type_t driver_control(
                 }
             }
 
-        } else if(nearby_car->lane == car->lane-1) {
+        } else if(  nearby_car->lane+1 == car->lane || 
+                    (nearby_car->lane == car->lane && nearby_car->l_blinker) ||
+                    (nearby_car->lane+2 == car->lane && nearby_car->r_blinker)) 
+        {
             left_lane_free = false; //TODO calculate safe space
-        } else if(nearby_car->lane == car->lane+1) {
+        } else if(  nearby_car->lane == car->lane+1 || 
+                    (nearby_car->lane == car->lane && nearby_car->r_blinker) ||
+                    (nearby_car->lane == car->lane+2 && nearby_car->l_blinker)) 
+        {
             right_lane_free = false;
         }
     }

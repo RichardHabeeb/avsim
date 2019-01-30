@@ -90,28 +90,37 @@ static void draw_full_screen_road(road_t *road) {
         sensor_view_t view;
         build_sensor_view(car, road, &view);
         SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0xFF, 0x20);
+
+        uint32_t view_top = road_top + view.left*lane_height_px;
+        uint32_t view_height = (1+view.right-view.left)*lane_height_px;
+
+        if(view_top+view_height >= road_top+(road->num_lanes-1)*lane_height_px) {
+            view_height -= lane_height_px;
+        }
+
+
         if(view.back < view.front) {        
             SDL_Rect view_rect = {
                 road_left + view.back*px_per_meter/CFG_SPACE_SCALE,
-                road_top + view.left*lane_height_px,
+                view_top,
                 (view.front-view.back)*px_per_meter/CFG_SPACE_SCALE,
-                (view.right-view.left)*lane_height_px
+                view_height
             };
             SDL_RenderFillRect(renderer, &view_rect);
         } else {
             SDL_Rect view_rect = {
                 road_left,
-                road_top + view.left*lane_height_px,
+                view_top,
                 (view.front)*px_per_meter/CFG_SPACE_SCALE,
-                (view.right-view.left)*lane_height_px
+                view_height
             };
             SDL_RenderFillRect(renderer, &view_rect);
             
             view_rect = (SDL_Rect){
                 road_left + view.back*px_per_meter/CFG_SPACE_SCALE,
-                road_top + view.left*lane_height_px,
+                view_top,
                 (road->length-view.back)*px_per_meter/CFG_SPACE_SCALE,
-                (view.right-view.left)*lane_height_px
+                view_height
             };
             SDL_RenderFillRect(renderer, &view_rect);
         }
