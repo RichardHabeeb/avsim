@@ -11,6 +11,7 @@ typedef struct car {
     int32_t acc;
     int32_t top_acc;
     int32_t top_dec;
+    uint32_t lane_change_remaining_ticks;
     bool r_blinker;
     bool l_blinker;
     uint32_t front_sensor_range;
@@ -35,6 +36,7 @@ typedef struct sensor_reading_car {
     uint32_t len;
     uint32_t lane;
     uint32_t spd;
+    uint32_t lane_change_remaining_ticks;
     bool r_blinker;
     bool l_blinker;
 } sensor_reading_car_t;

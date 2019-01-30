@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <SDL2/SDL.h>
 
+#include <util.h>
 #include <config.h>
 #include <draw.h>
 #include <road.h>
@@ -82,10 +83,10 @@ static void draw_full_screen_road(road_t *road) {
     uint32_t car_height_px = 3*px_per_meter;
 
     
+    /* draw sensor views */
     for(i = 0; i < road->num_cars; i++) {
         car_t *car = &road->cars[i];
 
-        /* draw sensor views */
         sensor_view_t view;
         build_sensor_view(car, road, &view);
         SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0xFF, 0x20);
@@ -114,18 +115,56 @@ static void draw_full_screen_road(road_t *road) {
             };
             SDL_RenderFillRect(renderer, &view_rect);
         }
-        
+    }
 
-        /* draw car */
-        SDL_Rect car_rect = {
-            road_left + (car->pos-car->length)*px_per_meter/CFG_SPACE_SCALE,
-            road_top + (lane_height_px/2 - car_height_px/2) + car->lane*lane_height_px,
-            car->length*px_per_meter/CFG_SPACE_SCALE,
-            car_height_px
-        };
-        SDL_SetRenderDrawColor(renderer, 0xFF - 0x80*car->spd/car->top_spd, (0xFF*car->spd/car->top_spd), 0x00, 0xFF);
+    /* draw car */
+    for(i = 0; i < road->num_cars; i++) {
+        car_t *car = &road->cars[i];
         
-        SDL_RenderFillRect(renderer, &car_rect);
+        SDL_SetRenderDrawColor(renderer, 0xFF - 0x80*car->spd/car->top_spd, (0xFF*car->spd/car->top_spd), 0x00, 0xFF);
+
+        uint32_t car_top =
+            road_top + 
+            (lane_height_px/2 - car_height_px/2) + 
+            car->lane*lane_height_px;
+
+        if(car->r_blinker) {
+            car_top += lane_height_px - (lane_height_px*car->lane_change_remaining_ticks/(CFG_CAR_LANE_CHANGE_S*CFG_TICKS_PER_S));
+        } else if(car->l_blinker) {
+            car_top -= lane_height_px - (lane_height_px*car->lane_change_remaining_ticks/(CFG_CAR_LANE_CHANGE_S*CFG_TICKS_PER_S));
+        }
+                
+
+
+        if(car->pos >= car->length) {
+            SDL_Rect car_rect = {
+                road_left + (car->pos-car->length)*px_per_meter/CFG_SPACE_SCALE,
+                car_top,
+                car->length*px_per_meter/CFG_SPACE_SCALE,
+                car_height_px
+            };
+            SDL_RenderFillRect(renderer, &car_rect);
+        } else {
+            uint32_t rear_pos = sub_mod(car->pos, car->length, road->length);
+
+            SDL_Rect car_rect = {
+                road_left,
+                car_top,
+                car->pos*px_per_meter/CFG_SPACE_SCALE,
+                car_height_px
+            };
+            SDL_RenderFillRect(renderer, &car_rect);
+            
+            car_rect = (SDL_Rect){
+                road_left + rear_pos*px_per_meter/CFG_SPACE_SCALE,
+                car_top,
+                (car->length - car->pos)*px_per_meter/CFG_SPACE_SCALE,
+                car_height_px
+            };
+            SDL_RenderFillRect(renderer, &car_rect);
+        }
+
+        
 
     }
 }

@@ -18,6 +18,15 @@ static void apply_dynamics(car_t *car) {
     }
 
     car->pos += car->spd/CFG_TICKS_PER_S;
+
+    if(car->lane_change_remaining_ticks == 1) {
+        car->lane += car->r_blinker ? 1 : -1;
+        car->lane_change_remaining_ticks = 0;
+        car->r_blinker = false;
+        car->l_blinker = false;
+    } else if(car->lane_change_remaining_ticks > 1) {
+        car->lane_change_remaining_ticks--;
+    }
 }
 
 static void speed_control_loop(car_t *car, uint32_t target_speed) {
@@ -47,7 +56,12 @@ static uint32_t build_sensor_reading_list(car_t *nearby_cars, sensor_reading_t *
 }
 
 
-plan_type_t driver_control(car_t * car, sensor_reading_t *readings, uint32_t num_readings, plan_action_t * action) {
+plan_type_t driver_control(
+        const car_t * car, 
+        const sensor_reading_t * readings,
+        uint32_t num_readings,
+        plan_action_t * action) 
+{
     //TODO relocate to a more modular location
     //TODO add road map/geometry to driver function
     uint32_t i;
@@ -63,13 +77,11 @@ plan_type_t driver_control(car_t * car, sensor_reading_t *readings, uint32_t num
         /* We only know about cars now */
         if(readings[i].type != SENSOR_READING_CAR) continue;
 
-        sensor_reading_car_t * nearby_car = &readings[i].data.car;
+        const sensor_reading_car_t * nearby_car = &readings[i].data.car;
 
         /* Search our lane */
         if(nearby_car->lane == car->lane) {
             
-            int32_t spd_diff = car->spd - nearby_car->spd;
-
             int32_t pos_diff = sub_mod(nearby_car->pos, nearby_car->len + car->pos, CFG_SINGLE_LEN_M*CFG_SPACE_SCALE);
 
             /* From Mobileye 2017 Paper */
@@ -78,12 +90,18 @@ plan_type_t driver_control(car_t * car, sensor_reading_t *readings, uint32_t num
                 CFG_CAR_TOP_ACC*CFG_SPACE_SCALE/(2*CFG_TICKS_PER_S*CFG_TICKS_PER_S) +
                 (int32_t)((car->spd + CFG_CAR_TOP_ACC*CFG_SPACE_SCALE/CFG_TICKS_PER_S)*
                 (car->spd + CFG_CAR_TOP_ACC*CFG_SPACE_SCALE/CFG_TICKS_PER_S))/
-                (-CFG_CAR_TOP_DEC*CFG_SPACE_SCALE) -
+                (-CFG_CAR_TOP_DEC*CFG_SPACE_SCALE) - /* here I set min-brake to 1/2 * max-brake */
                 (int32_t)nearby_car->spd*nearby_car->spd/(-2*CFG_CAR_TOP_DEC*CFG_SPACE_SCALE);
 
-            //printf("Car in front %i %i\n", pos_diff, d_min);
-            if(spd_diff > 0 && pos_diff < car->front_sensor_range && pos_diff < d_min) {
-                target_spd = nearby_car->spd;
+            if(     target_spd > nearby_car->spd/2 &&
+                    pos_diff < car->front_sensor_range && 
+                    pos_diff < d_min*2) 
+            {
+                if(pos_diff < d_min*3/2) {
+                    target_spd = nearby_car->spd/2; /* slow way down to get out */
+                } else {
+                    target_spd = min(target_spd, nearby_car->spd);
+                }
             }
 
         } else if(nearby_car->lane == car->lane-1) {
@@ -94,7 +112,7 @@ plan_type_t driver_control(car_t * car, sensor_reading_t *readings, uint32_t num
     }
 
 
-    if(target_spd < car->top_spd) {
+    if(target_spd < car->top_spd && car->lane_change_remaining_ticks == 0) {
 
         if(car->lane > 0 && left_lane_free) {
             target_spd = car->top_spd;
@@ -124,8 +142,6 @@ void car_tick(car_t *car, car_t *nearby_cars) {
 
     if(plan == PLAN_NONE) {
         car->acc = 0;
-        car->r_blinker = false;
-        car->l_blinker = false;
     }
 
     if(plan & PLAN_CHANGE_SPD) {
@@ -133,9 +149,13 @@ void car_tick(car_t *car, car_t *nearby_cars) {
     }
 
     if(plan & PLAN_CHANGE_LANE) {
-        //TODO change from instantaneous
-        car->lane = action.target_lane;
+        car->lane_change_remaining_ticks = CFG_CAR_LANE_CHANGE_S*CFG_TICKS_PER_S;
+
+        car->l_blinker = car->lane > action.target_lane;
+        car->r_blinker = car->lane < action.target_lane;
     }
+
+
 
     apply_dynamics(car);
 }
