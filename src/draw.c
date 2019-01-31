@@ -43,8 +43,8 @@ SDL_Point get_draw_scale() {
 }
 
 void set_draw_translation(SDL_Point s) {
-    view_rect.x = s.x;
-    view_rect.y = s.y;
+    view_rect.x = max(0, min(CFG_WORLD_SIZE_X-view_rect.w, s.x));
+    view_rect.y = max(0, min(CFG_WORLD_SIZE_Y-view_rect.h, s.y));
 }
 
 SDL_Point get_draw_translation() {

@@ -6,11 +6,11 @@ static inline uint32_t sub_until_zero(uint32_t a, uint32_t b) {
     return (b <= a) ? a - b : 0; 
 }
 
-static inline uint32_t max(uint32_t a, uint32_t b) {
+static inline uint32_t max(int32_t a, int32_t b) {
     return (a > b) ? a : b;
 }
 
-static inline uint32_t min(uint32_t a, uint32_t b) {
+static inline uint32_t min(int32_t a, int32_t b) {
     return (a < b) ? a : b;
 }
 

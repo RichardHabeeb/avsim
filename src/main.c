@@ -20,9 +20,6 @@ static bool paused = false;
 
 static bool handle_events() {
     SDL_Event e;
-    static bool left_mouse_down = false;
-    static bool right_mouse_down = false;
-    static bool middle_mouse_down = false;
     static SDL_Point prev_mouse_pos; 
 
     while(SDL_PollEvent(&e) != 0)
@@ -40,14 +37,8 @@ static bool handle_events() {
                     break;
             }
         } else if(e.type == SDL_MOUSEBUTTONDOWN) {
-            left_mouse_down   |= e.button.button == SDL_BUTTON_LEFT;
-            right_mouse_down  |= e.button.button == SDL_BUTTON_RIGHT;
-            middle_mouse_down |= e.button.button == SDL_BUTTON_MIDDLE;
 
         } else if(e.type == SDL_MOUSEBUTTONUP) {
-            left_mouse_down   &= e.button.button == SDL_BUTTON_LEFT;
-            right_mouse_down  &= e.button.button == SDL_BUTTON_RIGHT;
-            middle_mouse_down &= e.button.button == SDL_BUTTON_MIDDLE;
 
         } else if(e.type == SDL_MOUSEMOTION) {
             if((e.motion.state & SDL_BUTTON_RMASK) > 0) {
@@ -82,9 +73,9 @@ static bool tick() {
         return false;
     }
 
-    if(paused) return true;
-
-    road_tick(&single_road);
+    if(!paused) {
+        road_tick(&single_road);
+    }
 
     draw(&single_road, 1);
 
