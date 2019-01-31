@@ -24,21 +24,24 @@ static SDL_Rect view_rect = {
 static uint16_t view_rotation = 0;
 
 void set_draw_scale(SDL_Point s) {
-    s.x = max(0, min(DRAW_SCALE_MAX, s.x))*CFG_WINDOW_SIZE_X/(DRAW_SCALE_MAX/2);
-    s.y = max(0, min(DRAW_SCALE_MAX, s.y))*CFG_WINDOW_SIZE_Y/(DRAW_SCALE_MAX/2);
+    s.x = max(1, min(DRAW_SCALE_MAX, s.x))*CFG_WORLD_SIZE_X/(DRAW_SCALE_MAX);
+    s.y = max(1, min(DRAW_SCALE_MAX, s.y))*CFG_WORLD_SIZE_Y/(DRAW_SCALE_MAX);
 
     view_rect.x -= (s.x-view_rect.w)/2;
     view_rect.y -= (s.y-view_rect.h)/2;
-    //view_rect.y -= s.y/2;
     view_rect.w = s.x;
     view_rect.h = s.y;
+
+    view_rect.x = max(0, min(CFG_WORLD_SIZE_X-view_rect.w, view_rect.x));
+    view_rect.y = max(0, min(CFG_WORLD_SIZE_Y-view_rect.h, view_rect.y));
 
 }
 
 SDL_Point get_draw_scale() {
     SDL_Point s;
-    s.x = max(0, min(DRAW_SCALE_MAX, view_rect.w*DRAW_SCALE_MAX/(2*CFG_WINDOW_SIZE_X)));
-    s.y = max(0, min(DRAW_SCALE_MAX, view_rect.h*DRAW_SCALE_MAX/(2*CFG_WINDOW_SIZE_Y)));
+    s.x = max(1, min(DRAW_SCALE_MAX, view_rect.w*DRAW_SCALE_MAX/(CFG_WORLD_SIZE_X)));
+    s.y = max(1, min(DRAW_SCALE_MAX, view_rect.h*DRAW_SCALE_MAX/(CFG_WORLD_SIZE_Y)));
+    printf("%i %i\n",s.x, s.y);
     return s;
 }
 
