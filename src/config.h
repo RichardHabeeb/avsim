@@ -6,6 +6,13 @@
 #define CFG_NUM_CARS (20)
 #define CFG_SPACE_SCALE (1000)
 
+/* RENDERER PARAMS */
+#define CFG_WINDOW_SIZE_X (1200)
+#define CFG_WINDOW_SIZE_Y (500)
+#define CFG_WORLD_SIZE_X  (2000)
+#define CFG_WORLD_SIZE_Y  (1000)
+
+
 /* CAR PARAMS */
 #define CFG_CAR_MIN_LEN_M (4)
 #define CFG_CAR_MAX_LEN_M (6)
@@ -19,14 +26,15 @@
 #define CFG_CAR_TOP_ACC (10)
 #define CFG_CAR_TOP_DEC (-20)
 #define CFG_CAR_LANE_CHANGE_S (1)
-
+#define CFG_CAR_WIDTH_M (3)
 
 /* SINGLE ROAD SCENARIO SETTINGS */
 #define CFG_SINGLE_ROAD
 #ifdef CFG_SINGLE_ROAD
 
 #define CFG_SINGLE_NUM_LANES 6
-#define CFG_SINGLE_LEN_M 200
+#define CFG_SINGLE_LEN_M 300
+#define CFG_SINGLE_LANE_HEIGHT_M 5
 
 #endif
 

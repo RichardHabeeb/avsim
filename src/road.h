@@ -15,3 +15,4 @@ typedef struct road {
 
 void road_tick(road_t *);
 void build_sensor_view(car_t *car, road_t *road, sensor_view_t *view);
+bool collision_check(road_t *, car_t *);

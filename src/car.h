@@ -20,6 +20,9 @@ typedef struct car {
 
     /* Used to build lists of cars in a sensor range */
     struct car *sensor_list_next;
+
+    /* Used for visualization */
+    bool selected;
 } car_t;
 
 

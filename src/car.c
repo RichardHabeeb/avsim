@@ -81,8 +81,8 @@ plan_type_t driver_control(
 
         /* Search our lane or changing lane cars */
         if( nearby_car->lane == car->lane || 
-            (nearby_car->lane+1 == car->lane && nearby_car->l_blinker) ||
-            (nearby_car->lane-1 == car->lane && nearby_car->r_blinker)) 
+            (nearby_car->lane+1 == car->lane && nearby_car->r_blinker) ||
+            (nearby_car->lane == car->lane+1 && nearby_car->l_blinker)) 
         {
             
             int32_t pos_diff = sub_mod(nearby_car->pos, nearby_car->len + car->pos, CFG_SINGLE_LEN_M*CFG_SPACE_SCALE);
@@ -97,7 +97,7 @@ plan_type_t driver_control(
                 (int32_t)nearby_car->spd*nearby_car->spd/(-2*CFG_CAR_TOP_DEC*CFG_SPACE_SCALE);
 
             if(     target_spd > nearby_car->spd/2 &&
-                    pos_diff < car->front_sensor_range && 
+                    pos_diff < car->front_sensor_range && /* This needs to be revised somehow */
                     pos_diff < d_min*2) 
             {
                 if(pos_diff < d_min*3/2) {
