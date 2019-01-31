@@ -50,19 +50,24 @@ static bool handle_events() {
             middle_mouse_down &= e.button.button == SDL_BUTTON_MIDDLE;
 
         } else if(e.type == SDL_MOUSEMOTION) {
-            if(right_mouse_down) {
-                //get_draw_translation
-
+            if((e.motion.state & SDL_BUTTON_RMASK) > 0) {
+                SDL_Point translation = get_draw_translation();
+                translation.x -= e.motion.x - prev_mouse_pos.x;
+                translation.y -= e.motion.y - prev_mouse_pos.y;
+                set_draw_translation(translation); 
             }
+
+            prev_mouse_pos.x = e.motion.x;
+            prev_mouse_pos.y = e.motion.y;
 
         } else if(e.type == SDL_MOUSEWHEEL) {
             SDL_Point s = get_draw_scale();
             if(e.wheel.y > 0) {
-                s.x -= DRAW_SCALE_MAX/64;
-                s.y -= DRAW_SCALE_MAX/64;
+                s.x -= DRAW_SCALE_MAX/32;
+                s.y -= DRAW_SCALE_MAX/32;
             } else {
-                s.x += DRAW_SCALE_MAX/64;
-                s.y += DRAW_SCALE_MAX/64;
+                s.x += DRAW_SCALE_MAX/32;
+                s.y += DRAW_SCALE_MAX/32;
             }
             set_draw_scale(s);
         }

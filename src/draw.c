@@ -15,16 +15,24 @@ static SDL_Texture *world = NULL;
 static SDL_Texture *full_screen_road = NULL;
 static SDL_Rect full_screen_road_rect;
 
-static SDL_Rect view_rect = {0,0,CFG_WINDOW_SIZE_X,CFG_WINDOW_SIZE_Y};
+static SDL_Rect view_rect = {
+    CFG_WORLD_SIZE_X/2 - CFG_WINDOW_SIZE_X/2,
+    CFG_WORLD_SIZE_Y/2 - CFG_WINDOW_SIZE_Y/2,
+    CFG_WINDOW_SIZE_X,
+    CFG_WINDOW_SIZE_Y};
 
 static uint16_t view_rotation = 0;
 
 void set_draw_scale(SDL_Point s) {
-    s.x = max(0, min(DRAW_SCALE_MAX, s.x));
-    s.y = max(0, min(DRAW_SCALE_MAX, s.y));
+    s.x = max(0, min(DRAW_SCALE_MAX, s.x))*CFG_WINDOW_SIZE_X/(DRAW_SCALE_MAX/2);
+    s.y = max(0, min(DRAW_SCALE_MAX, s.y))*CFG_WINDOW_SIZE_Y/(DRAW_SCALE_MAX/2);
 
-    view_rect.w = s.x*CFG_WINDOW_SIZE_X/(DRAW_SCALE_MAX/2);
-    view_rect.h = s.y*CFG_WINDOW_SIZE_Y/(DRAW_SCALE_MAX/2);
+    view_rect.x -= (s.x-view_rect.w)/2;
+    view_rect.y -= (s.y-view_rect.h)/2;
+    //view_rect.y -= s.y/2;
+    view_rect.w = s.x;
+    view_rect.h = s.y;
+
 }
 
 SDL_Point get_draw_scale() {
