@@ -30,7 +30,7 @@ static void apply_dynamics(car_t *car) {
 }
 
 static void speed_control_loop(car_t *car, uint32_t target_speed) {
-    //TODO make this better with PID or something
+    /* This could be improved */
     car->acc = (car->spd > target_speed) ? car->top_dec : ((car->spd == target_speed) ? 0 : car->top_acc);
 }
 

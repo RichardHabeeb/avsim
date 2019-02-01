@@ -7,31 +7,28 @@
 #include <SDL2/SDL.h>
 
 #include <config.h>
+#include <sim.h>
 #include <draw.h>
 #include <road.h>
 #include <car.h>
 
 
-static road_t single_road;
-static car_t cars[CFG_NUM_CARS];
-
-static bool paused = false;
-
-
-static bool handle_events() {
-    SDL_Event e;
+static sim_action_t handle_events(sim_t *sim, vis_t *vis) {
     static SDL_Point prev_mouse_pos; 
+    SDL_Event e;
 
     while(SDL_PollEvent(&e) != 0)
     {
-        if(e.type == SDL_QUIT) return false;
-        else if(e.type == SDL_KEYDOWN) {
+        if(e.type == SDL_QUIT) {
+            return SIM_QUIT;
+
+        } else if(e.type == SDL_KEYDOWN) {
             switch(e.key.keysym.sym) {
                 case SDLK_q:
                 case SDLK_ESCAPE:
-                    return false;
+                    return SIM_QUIT;
                 case SDLK_SPACE:
-                    paused = !paused;
+                    sim->paused = !sim->paused;
                     break;
                 default:
                     break;
@@ -42,17 +39,17 @@ static bool handle_events() {
 
         } else if(e.type == SDL_MOUSEMOTION) {
             if((e.motion.state & SDL_BUTTON_RMASK) > 0) {
-                SDL_Point translation = get_draw_translation();
+                SDL_Point translation = get_draw_translation(vis);
                 translation.x -= e.motion.x - prev_mouse_pos.x;
                 translation.y -= e.motion.y - prev_mouse_pos.y;
-                set_draw_translation(translation); 
+                set_draw_translation(vis, translation); 
             }
 
             prev_mouse_pos.x = e.motion.x;
             prev_mouse_pos.y = e.motion.y;
 
         } else if(e.type == SDL_MOUSEWHEEL) {
-            SDL_Point s = get_draw_scale();
+            SDL_Point s = get_draw_scale(vis);
             if(e.wheel.y > 0) {
                 s.x -= DRAW_SCALE_MAX/32;
                 s.y -= DRAW_SCALE_MAX/32;
@@ -60,34 +57,30 @@ static bool handle_events() {
                 s.x += DRAW_SCALE_MAX/32;
                 s.y += DRAW_SCALE_MAX/32;
             }
-            set_draw_scale(s);
+            set_draw_scale(vis, s);
         }
     }
-    return true;
+    return SIM_CONTINUE;
 }
 
 
-static bool tick() {
+static bool tick(sim_t *sim, vis_t *vis) {
 
-    if(handle_events() == false) {
-        return false;
+    if(handle_events(sim, vis) == SIM_QUIT) {
+        return SIM_QUIT;
     }
 
-    if(!paused) {
-        road_tick(&single_road);
+    if(!sim->paused) {
+        for(uint32_t i = 0; i < sim->model.num_roads; i++) {
+            road_tick(&sim->model.roads[i]);
+        }
     }
 
-    draw(&single_road, 1);
+    draw(vis, sim);
 
-    return true;
+    return SIM_CONTINUE;
 }
 
-static void setup_single_road() {
-    single_road.num_lanes = CFG_SINGLE_NUM_LANES;
-    single_road.length = CFG_SINGLE_LEN_M * CFG_SPACE_SCALE;
-    single_road.num_cars = CFG_NUM_CARS;
-    single_road.cars = cars;
-}
 
 void setup_car_params(car_t * car, road_t * road) {
     memset(car, 0, sizeof(car_t));
@@ -105,24 +98,43 @@ void setup_car_params(car_t * car, road_t * road) {
     } while(collision_check(road, car));
 }
 
+#ifdef CFG_SINGLE_ROAD
+static void setup_single_road(road_t *single_road, car_t *cars) {
+    single_road->num_lanes = CFG_SINGLE_NUM_LANES;
+    single_road->length = CFG_SINGLE_LEN_M * CFG_SPACE_SCALE;
+    single_road->num_cars = CFG_NUM_CARS;
+    single_road->cars = cars;
+}
+#endif
 
 int main(int argc, char* argv[]) {
+    static sim_t sim;
+    static vis_t vis;
+
     srand(time(NULL));
 
 #ifdef CFG_SINGLE_ROAD
-    setup_single_road();
+    sim.model.roads = (road_t *)malloc(sizeof(road_t));
+    sim.model.cars = (car_t *)malloc(sizeof(car_t)*CFG_NUM_CARS);
+    sim.model.num_roads = 1;
+    sim.model.num_cars = CFG_NUM_CARS;
+
+    setup_single_road(sim.model.roads, sim.model.cars);
 
     for(uint32_t i = 0; i < CFG_NUM_CARS; i++) {
-        setup_car_params(&single_road.cars[i], &single_road);
+        setup_car_params(&sim.model.cars[i], sim.model.roads);
     }
-
-    setup_draw(&single_road, 1);
 #endif
 
-    while(tick()) {
-        usleep(CFG_TICK_SLP_US);
+    setup_draw(&vis, &sim);
+
+    while(tick(&sim, &vis) == SIM_CONTINUE) {
+        usleep(CFG_TICK_SLP_US); //TODO framerate control
     }
 
-    cleanup_draw();
+    cleanup_draw(&vis);
+
+    free(sim.model.cars);
+    free(sim.model.roads);
 }
 
