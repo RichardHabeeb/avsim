@@ -34,6 +34,18 @@ static sim_action_t handle_events(sim_t *sim, vis_t *vis) {
                     break;
             }
         } else if(e.type == SDL_MOUSEBUTTONDOWN) {
+            if(e.button.button == SDL_BUTTON_LEFT) {
+                car_t * clicked_car = NULL;
+                map_point_to_drawn_object(
+                        vis,
+                        sim,
+                        (SDL_Point) { e.button.x, e.button.y },
+                        &clicked_car,
+                        NULL);
+                if(clicked_car != NULL) {
+                    clicked_car->selected = !clicked_car->selected;
+                }
+            }
 
         } else if(e.type == SDL_MOUSEBUTTONUP) {
 

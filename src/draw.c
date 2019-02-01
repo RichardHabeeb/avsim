@@ -119,8 +119,39 @@ void cleanup_draw(vis_t *vis) {
 }
 
 
-void map_point_to_drawn_object(uint32_t x, uint32_t y, car_t **car, road_t **road) {
-    //TODO
+void map_point_to_drawn_object(vis_t *vis, sim_t *sim, SDL_Point p, car_t **car_ret, road_t **road_ret) {
+    /* translate to world coords */
+    SDL_Point wp = get_draw_scale(vis);
+    wp.x = vis->view.x + 2*p.x*wp.x/DRAW_SCALE_MAX;
+    wp.y = vis->view.y + 2*p.y*wp.y/DRAW_SCALE_MAX;
+
+
+    for(uint32_t i = 0; i < sim->model.num_roads; i++) {
+        road_t *road = &sim->model.roads[i];
+        SDL_Rect *dim = &vis->road_dim[i];
+
+        /* Check if point is in road */
+        if(wp.x >= dim->x && wp.x <= dim->x+dim->w && wp.y >= dim->y && wp.y <= dim->y+dim->h) {
+
+            if(road_ret != NULL) {
+                *road_ret = road;
+            }
+
+            if(car_ret == NULL) continue;
+
+            /* translate to road coords */
+            uint32_t pos = road->length*(wp.x - dim->x)/dim->w;
+            uint32_t lane = road->num_lanes*(wp.y-dim->y)/dim->h;
+
+            for(uint32_t j = 0; j < road->num_cars; j++) {
+                car_t * car = &road->cars[j];
+
+                if(car->lane == lane && pos <= car->pos && pos >= car->pos-car->length) {
+                    *car_ret = car;
+                }
+            }
+        }
+    }
 }
 
 
@@ -161,6 +192,8 @@ static void draw_road(vis_t *vis, road_t *road, uint32_t road_width_px, uint32_t
     /* draw sensor views */
     for(i = 0; i < road->num_cars; i++) {
         car_t *car = &road->cars[i];
+
+        if(!car->selected) continue;
 
         sensor_view_t view;
         build_sensor_view(car, road, &view);

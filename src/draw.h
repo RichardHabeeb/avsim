@@ -18,6 +18,8 @@ void setup_draw(vis_t *, sim_t *);
 void cleanup_draw(vis_t *);
 void draw(vis_t *, sim_t *);
 
+void map_point_to_drawn_object(vis_t *, sim_t *, SDL_Point, car_t **, road_t **); 
+
 #define DRAW_SCALE_MAX    (0xFF)
 #define DRAW_ROTATION_MAX (0xFFFF)
 
