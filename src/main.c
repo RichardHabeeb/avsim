@@ -12,6 +12,7 @@
 #include <road.h>
 #include <car.h>
 
+#include <basic_ai.h>
 
 static sim_action_t handle_events(sim_t *sim, vis_t *vis) {
     static SDL_Point prev_mouse_pos; 
@@ -104,7 +105,7 @@ void setup_car_params(car_t * car, road_t * road) {
     car->side_sensor_range = CFG_CAR_SIDE_RANGE_LANES;
     car->top_acc = CFG_CAR_TOP_ACC*CFG_SPACE_SCALE;
     car->top_dec = CFG_CAR_TOP_DEC*CFG_SPACE_SCALE;
-    
+    car->planner = basic_ai_planner;
     do {
         car->pos = (rand()%road->length); //TODO abort on too many attempts
     } while(collision_check(road, car));

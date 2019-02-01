@@ -2,29 +2,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-typedef struct car {
-    uint32_t pos;
-    uint32_t length;
-    uint32_t lane;
-    uint32_t spd;
-    uint32_t top_spd;
-    int32_t acc;
-    int32_t top_acc;
-    int32_t top_dec;
-    uint32_t lane_change_remaining_ticks;
-    bool r_blinker;
-    bool l_blinker;
-    uint32_t front_sensor_range;
-    uint32_t rear_sensor_range;
-    uint32_t side_sensor_range;
 
-    /* Used to build lists of cars in a sensor range */
-    struct car *sensor_list_next;
-
-    /* Used for visualization */
-    bool selected;
-} car_t;
-
+typedef struct car car_t;
 
 typedef struct sensor_view {
     uint32_t left;
@@ -57,7 +36,6 @@ typedef struct sensor_reading {
 } sensor_reading_t;
 
 
-
 typedef enum plan_type {/* bitmask, for multiple plans */
     PLAN_NONE = 0x00,
     PLAN_CHANGE_SPD = 0x01,
@@ -68,6 +46,36 @@ typedef struct plan_action {
     uint32_t target_spd;
     uint32_t target_lane;
 } plan_action_t;
+
+
+
+/* Implement this to create an AI function for a car */
+typedef plan_type_t (*ai_planner_fn_t)(const car_t *, const sensor_reading_t *, uint32_t num_readings, plan_action_t *);
+
+typedef struct car {
+    uint32_t pos;
+    uint32_t length;
+    uint32_t lane;
+    uint32_t spd;
+    uint32_t top_spd;
+    int32_t acc;
+    int32_t top_acc;
+    int32_t top_dec;
+    uint32_t lane_change_remaining_ticks;
+    bool r_blinker;
+    bool l_blinker;
+    uint32_t front_sensor_range;
+    uint32_t rear_sensor_range;
+    uint32_t side_sensor_range;
+
+    /* Used to build lists of cars in a sensor range */
+    struct car *sensor_list_next;
+
+    /* Used for visualization */
+    bool selected;
+
+    ai_planner_fn_t planner;
+} car_t;
 
 
 void car_tick(car_t *, car_t * nearby_cars);
