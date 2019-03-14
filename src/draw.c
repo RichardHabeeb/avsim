@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <SDL2/SDL.h>
+#include <SDL2/SDL2_gfxPrimitives.h>
 
 #include <util.h>
 #include <sim.h>
@@ -8,6 +9,42 @@
 #include <draw.h>
 #include <road.h>
 #include <car.h>
+
+void drawcircle(vis_t *vis, int x0, int y0, int radius)
+{
+    int x = radius-1;
+    int y = 0;
+    int dx = 1;
+    int dy = 1;
+    int err = dx - (radius << 1);
+
+    while (x >= y)
+    {
+        SDL_RenderDrawPoint(vis->rend, x0 + x, y0 + y);
+        SDL_RenderDrawPoint(vis->rend, x0 + y, y0 + x);
+        SDL_RenderDrawPoint(vis->rend, x0 - y, y0 + x);
+        SDL_RenderDrawPoint(vis->rend, x0 - x, y0 + y);
+        SDL_RenderDrawPoint(vis->rend, x0 - x, y0 - y);
+        SDL_RenderDrawPoint(vis->rend, x0 - y, y0 - x);
+        SDL_RenderDrawPoint(vis->rend, x0 + y, y0 - x);
+        SDL_RenderDrawPoint(vis->rend, x0 + x, y0 - y);
+
+        if (err <= 0)
+        {
+            y++;
+            err += dy;
+            dy += 2;
+        }
+
+        if (err > 0)
+        {
+            x--;
+            dx += 2;
+            err += dx - (radius << 1);
+        }
+    }
+}
+
 
 
 void set_draw_scale(vis_t * vis, SDL_Point s) {

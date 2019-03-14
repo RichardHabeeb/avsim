@@ -1,7 +1,7 @@
 
 
 CC=@gcc
-LDFLAGS=-lSDL2
+LDFLAGS=-lSDL2 -lSDL2_gfx
 CFLAGS=-Isrc -DDEBUG -Wall
 OBJ_OUTPUT=avsim
 
