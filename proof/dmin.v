@@ -684,6 +684,14 @@ Proof.
   apply Qopp_lt_compat; trivial.
 Qed.
 
+Lemma car_rear_lt_false: forall (c : car_st), c_x c < c_rear_x c -> False.
+Proof.
+  intros * H.
+  assert (c_rear_x c < c_x c) as H0 by apply car_rear_lt.
+  apply Qlt_not_lt in H.
+  contradiction.
+Qed.
+
 Lemma dt_squared_pos: 0 < dt^2.
 Proof.
   rewrite Qsquare.
@@ -980,6 +988,15 @@ Proof.
       contradiction.
 Qed.
 
+Lemma d_min_holds_ordering : forall (c : car_st*car_st),
+  d_min_holds_p c -> c_x (rear c) < c_x (front c).
+Proof.
+  intros * H.
+  unfold d_min_holds_p, d_min_holds in H.
+  destruct H as (H0 & H).
+  apply car_order_rear_weakening in H0; trivial.
+Qed.
+
 
 Lemma d_min_holds_collision_free_step : forall (cf cf' cr cr' : car_st),
   d_min_holds cf cr -> same_lane cf cr -> step cf cf' -> step cr cr' -> collision_free_step cf cf' cr cr'.
@@ -1183,12 +1200,14 @@ Proof.
 Qed.
 
 
-Lemma d_min_transition_invariant : forall (c c' : car_st*car_st),
+(* Lemma d_min_transition_invariant : forall (c c' : car_st*car_st),
   (d_min_holds_p c) -> same_lane (fst c) (snd c)  -> multi d_min_step c c' -> ~(d_min_holds_p c') ->
   (exists (a b : car_st*car_st), multi d_min_step c a /\ d_min_step a b /\ multi d_min_step b c' /\ 
     (d_min_holds_p a /\ ~ d_min_holds_p b)).
 Proof.
 Admitted.
+
+
 
 Lemma d_min_transition_invariant2 : forall (c c' : car_st*car_st),
   (d_min_holds_p c) -> same_lane (fst c) (snd c) -> multi d_min_step c c' -> ~(d_min_holds_p c') ->
@@ -1198,24 +1217,36 @@ Lemma d_min_transition_invariant2 : forall (c c' : car_st*car_st),
     d_min_holds_p a /\
     (forall (a' : car_st*car_st), a' <> a -> multi d_min_step a a' -> multi d_min_step a' c' -> ~ d_min_holds_p a')).
 Proof.
+Admitted. *)
+
+
+Definition d_min_brake_mode (c c'' : car_st*car_st) :=
+  (forall (c' : car_st*car_st), multi d_min_step c c' -> multi d_min_step c' c'' -> ~ d_min_holds_p c').
+
+Lemma d_min_transition_invariant3 : forall (c c' : car_st*car_st),
+  (d_min_holds_p c) -> same_lane (fst c) (snd c) -> multi d_min_step c c' -> ~(d_min_holds_p c') ->
+  (exists (i i' : car_st*car_st), 
+    multi d_min_step c i /\
+    d_min_step i i' /\
+    multi d_min_step i' c' /\ 
+    d_min_holds_p i /\
+    d_min_brake_mode i' c').
+Proof.
 Admitted.
 
 
-Lemma d_min_step_max_acc : forall (c c' : car_st*car_st), 
-  d_min_step c c' -> ~(d_min_holds_p c) -> (c_a (snd c) <= a_br_req).
-Proof.
-  intros * DStep DH.
-  unfold d_min_step in DStep.
-  intuition.
-Qed.
 
-(* 
-Lemma d_min_acc_bound : forall (c c' c'' : car_st*car_st),
-  multi d_min_step c c' -> multi d_min_step c' c'' -> ~ d_min_holds_p c' -> c_a (snd c') <= a_br_req.
+Lemma d_min_safe_brake : forall (c c' c'' : car_st*car_st),
+  d_min_step c c' ->
+  multi d_min_step c' c'' ->
+  d_min_brake_mode c' c'' ->
+  max_stopping_dist (rear c) - min_stopping_dist (front c) < c_rear_x (front c') - c_x (rear c') ->
+  0 < c_rear_x (front c'') - c_x (rear c'').
 Proof.
+  intros * DStep0 MDStep1 DBrake Dist0.
+Admitted.
 
-Qed.
- *)
+
 Lemma d_min_safe_multi_step : forall (c c' : car_st*car_st),
   (d_min_holds_p c) -> same_lane (fst c) (snd c)  -> multi d_min_step c c' -> collision_free_multi_dmin_step c c'.
 Proof.
@@ -1229,42 +1260,60 @@ Proof.
 
   split; trivial.
   intros * MDStep0 MDStep1 L2.
-  split.
-  {
-    assert (d_min_holds_p c'' \/ ~d_min_holds_p c'') as C.
-    { admit. }
-    destruct C.
-    - now (apply d_min_init_no_collision).
-    - apply d_min_transition_invariant2 with (c':=c'') in InitDMin as Inv; trivial.
-      destruct Inv as [a Inv].
-      destruct Inv as (IStep0 & IStep1 & DMinHold1 & DMinHold2).
 
-      apply d_min_acc_bound in DMinHold2.
+  assert (d_min_holds_p c'' \/ ~d_min_holds_p c'') as C.
+  { admit. }
+  destruct C.
+  - split.
+    {
+      now (apply d_min_init_no_collision).
+    }
 
-(*     - apply d_min_transition_invariant with (c':=c'') in InitDMin as Inv; trivial.
-      destruct Inv as [x Inv].
-      destruct Inv as [y Inv].
-      destruct Inv as (IStep0 & IStep1 & IStep2 & DMinHold1 & DMinHold2).
-      apply d_min_holds_response_dist with (c':=y) in DMinHold1 as Dist0; trivial.
-      
-      apply multi_dmin_step_multi_parallel_step in IStep2 as IMStep2.
-      apply multi_parallel_multi_step_fst in IMStep2 as IMStepFront2.
-      apply multi_parallel_multi_step_snd in IMStep2 as IMStepRear2.
-      
+    split.
+    {
+      intros.
+      apply d_min_holds_ordering in InitDMin.
+      unfold front,rear in *.
+      apply Qlt_not_lt in InitDMin.
+      contradiction.
+    }
+    intros.
+    apply d_min_holds_ordering in H; trivial.
+
+  - apply d_min_transition_invariant3 with (c':=c'') in InitDMin as Inv; trivial.
+    destruct Inv as [i [i' (MDStepI0 & DStepI1 & MDStepI2 & DMinI1 & DMinI2)]].
+    apply d_min_holds_response_dist with (c':=i') in DMinI1 as Dist0; trivial.
+
+    apply d_min_safe_brake with (c'':=c'') in DStepI1 as Dist1; trivial.
+    rewrite Qplus_neg, <- Qlt_minus_iff in Dist1.
+    split.
+    {
       unfold collision.
+      unfold front,rear in *.
       intro G.
-      destruct G as [L2' G]; clear L2'.
-      destruct G as [G|G].
-      
-      apply multi_step_dist in IMStepFront2 as DistFront. *)
-  }
+      destruct G as (L2' & [[E0 E1] | [E0 E1]]); clear L2'.
+      - apply Qle_lt_trans with (z:=c_rear_x (fst c'')) in E1; trivial.
+        apply car_rear_lt_false in E1.
+        contradiction.
+      - apply Qlt_le_trans with (z:=c_x (snd c'')) in Dist1; trivial.
+        apply Qlt_irrefl in Dist1.
+        contradiction.
+    }
 
-  split.
-  {
-    admit.
-  }
+    split.
+    {
+      intros H0.
+      apply d_min_holds_ordering in InitDMin.
+      unfold front,rear in *.
+      apply Qlt_not_lt in InitDMin.
+      contradiction.
+    }
 
-  admit.
+    intros H0.
+    SearchAbout (c_rear_x).
+    apply car_order_rear_weakening in Dist1.
+    unfold front, rear in *.
+    assumption.
 Qed.
 
 
