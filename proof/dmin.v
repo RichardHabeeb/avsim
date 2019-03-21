@@ -542,7 +542,8 @@ Hypothesis PosLen: forall c:car_st, 0 < c_l c.
 
 Definition c_rear_x (c : car_st) := (c_x c) - (c_l c).
 
-Definition same_lane (c1 : car_st) (c2 : car_st) := (c_lane c1 = c_lane c2).
+Definition same_lane (c1 c2 : car_st) := (c_lane c1 = c_lane c2).
+Definition same_lane_p (c : car_st*car_st) := (c_lane (fst c) = c_lane (snd c)).
 
 Definition step (c : car_st) (c' : car_st) :=
   (* Kinematics *)
@@ -562,17 +563,30 @@ Definition step (c : car_st) (c' : car_st) :=
   (c_ts c' = S (c_ts c)).
 
 
+Definition const_acc (c c' : car_st) := (forall c'', multi step c c'' -> multi step c'' c' -> c_a c == c_a c'').
+
+
+Definition parallel_step (c c': car_st*car_st ) := step (fst c) (fst c') /\ step (snd c) (snd c').
+(*   let (cf, cr) := c in let (cf', cr') := c' in step cf cf' /\ step cr cr'. *)
+
+Definition front (c : car_st*car_st) := fst c.
+Definition rear (c : car_st*car_st) := snd c.
+
+
 Definition collision (c1 : car_st) (c2 : car_st) :=
   (same_lane c1 c2) /\
   ((c_x c1 >= c_rear_x c2) /\ (c_x c1 <= c_x c2) \/
    (c_x c2 >= c_rear_x c1) /\ (c_x c2 <= c_x c1)).
 
-Definition collision_free_step (c1 : car_st) (c1' : car_st) (c2 : car_st) (c2' : car_st) :=
+Definition collision_free_step (c1 c1' c2 c2' : car_st) :=
   ~(collision c1 c2) /\ (same_lane c1 c2) /\
   (step c1 c1') /\ (step c2 c2') /\
   ~(collision c1' c2') /\
   (c_x c1 < c_x c2 -> c_x c1' < c_x c2') /\ (* Relative orderings must be the same, no instantaneous passing *)
   (c_x c2 < c_x c1 -> c_x c2' < c_x c1').
+Definition collision_free_step_p (c c' : car_st*car_st) := collision_free_step (fst c) (fst c') (snd c) (snd c').
+
+
 
 
 Definition non_acc_equ_state (c1 c2 : car_st) := 
@@ -585,13 +599,28 @@ Definition non_acc_equ_state (c1 c2 : car_st) :=
 Definition max_stopping_dist (c : car_st) := -((c_v c + a_max*dt)^2)/((2#1)*a_br_req).
 Definition min_stopping_dist (c : car_st) := -((c_v c)^2)/((2#1)*a_min).
 
-Definition d_min_holds (cf : car_st) (cr : car_st) :=
+Definition d_min_holds (cf cr : car_st) :=
   (c_rear_x cf) > (c_x cr) /\ (* This is implied by the following but it's here for convenience *)
   (c_rear_x cf) - (c_x cr) > ((c_v cr)*dt + a_max*dt^2/(2#1)) /\
   (c_rear_x cf) - (c_x cr) > 
   (c_v cr)*dt + a_max*dt^2/(2#1) + max_stopping_dist cr - min_stopping_dist cf.
 
-Definition const_acc (c c' : car_st) := (forall c'', multi step c c'' -> multi step c'' c' -> c_a c == c_a c'').
+
+
+Definition d_min_holds_p (c : car_st*car_st) := d_min_holds (front c) (rear c).
+Definition d_min_step (c c' : car_st*car_st) :=
+  (~ d_min_holds_p c -> c_a (rear c) <= a_br_req) /\ parallel_step c c'.
+Definition d_min_false_multi (c c' : car_st*car_st) := 
+  (forall c'', multi d_min_step c c'' -> multi d_min_step c'' c' -> ~ d_min_holds_p c').
+
+Definition collision_free_multi_dmin_step (c c' : car_st*car_st) :=
+  ~(collision (fst c) (snd c)) /\ 
+  (multi d_min_step c c') /\
+  (forall c'', multi d_min_step c c'' -> multi d_min_step c'' c' -> same_lane (fst c'') (snd c'') ->
+    (~(collision (fst c'') (snd c'')) /\
+      (c_x (fst c) < c_x (snd c) -> c_x (fst c'') < c_x (snd c'')) /\ (* Relative orderings must be the same, no instantaneous passing *)
+      (c_x (snd c) < c_x (fst c) -> c_x (snd c'') < c_x (fst c'')))).
+
 
 
 (** ##############################################################################
@@ -830,6 +859,88 @@ Proof.
 Qed.
 
 
+Lemma parallel_step_fst : forall (c c' : car_st*car_st), 
+  parallel_step c c' -> step (fst c) (fst c').
+Proof.
+  intros * PStep.
+  unfold parallel_step in PStep.
+  intuition.
+Qed.
+
+Lemma parallel_step_snd : forall (c c' : car_st*car_st), 
+  parallel_step c c' -> step (snd c) (snd c').
+Proof.
+  intros * PStep.
+  unfold parallel_step in PStep.
+  intuition.
+Qed.
+
+Lemma multi_parallel_multi_step_fst : forall (c c' : car_st*car_st), 
+  multi parallel_step c c' -> multi step (fst c) (fst c').
+Proof.
+  intros * MPStep.
+  induction MPStep.
+  - apply multi_refl.
+  - unfold parallel_step in H.
+    intuition.
+    apply multi_R in H0.
+    apply multi_trans with (y:=(fst y)); trivial.
+Qed.
+
+Lemma multi_parallel_multi_step_snd : forall (c c' : car_st*car_st), 
+  multi parallel_step c c' -> multi step (snd c) (snd c').
+Proof.
+  intros * MPStep.
+  induction MPStep.
+  - apply multi_refl.
+  - unfold parallel_step in H.
+    intuition.
+    apply multi_R in H1.
+    apply multi_trans with (y:=(snd y)); trivial.
+Qed.
+
+
+
+
+(*
+Lemma faster_car_bigger_const_multi_step : forall (c c' : car_st*car_st),
+  c_v (snd c) <= c_v (fst c) -> 
+  c_a (snd c) <= c_a (fst c) ->
+  multi parallel_step c c' ->
+  const_acc (fst c) (fst c') ->
+  const_acc (snd c) (snd c') ->
+  c_x (snd c') - c_x (snd c) <= c_x (fst c') - c_x (fst c) .
+Proof.
+  intros * VFaster AFaster MPStep AConst1 AConst2.
+
+  induction MPStep.
+  - rewrite !Qplus_neg, !Qplus_opp_r.
+    auto with qarith.
+  - assert (multi step (fst y) (fst z)) as MStepYZFst.
+    { apply multi_parallel_multi_step_fst; trivial. }
+    assert (multi step (snd y) (snd z)) as MStepYZSnd.
+    { apply multi_parallel_multi_step_snd; trivial. }
+
+    apply multi_step with (z0:=z) in H as MPStepXZ; trivial.
+    assert (multi step (fst x) (fst z)) as MStepXZFst.
+    { apply multi_parallel_multi_step_fst; trivial. }
+    assert (multi step (snd x) (snd z)) as MStepXZSnd.
+    { apply multi_parallel_multi_step_snd; trivial. }
+    
+    apply parallel_step_fst in H as StepFstXY.
+    apply parallel_step_snd in H as StepSndXY.
+    apply multi_R in StepFstXY as MStepFstXY.
+    apply multi_R in StepSndXY as MStepSndXY.
+    apply partial_const_acc with (c':=fst y) in AConst1 as AConstY1; trivial.
+    apply partial_const_acc with (c':=snd y) in AConst2 as AConstY2; trivial.
+
+    assert (c_a (snd y) <= c_a (fst y)).
+    {
+      
+    }
+    
+Qed.
+*)
 
 Lemma step_min_dist: forall (c c' cm cm' : car_st), 
   non_acc_equ_state c cm -> c_a cm == a_min -> step c c' -> step cm cm' -> (c_x cm' <= c_x c').
@@ -854,6 +965,22 @@ Proof.
 Qed.
 
 
+Lemma d_min_holds_no_inst_collision : forall (cf cr : car_st),
+  d_min_holds cf cr -> same_lane cf cr -> ~ collision cf cr.
+Proof.
+  intros * InitD Lane.
+    unfold d_min_holds in InitD.
+    unfold collision.
+    intuition.
+    + apply Qle_lt_trans with (x:=c_x cf) (y:=c_x cr) (z:=c_rear_x cf) in H5 as A0; trivial.
+      assert (c_rear_x cf < c_x cf) as A1 by apply car_rear_lt.
+      apply Qlt_not_lt in A1.
+      contradiction.
+    + apply Qlt_not_le in H0.
+      contradiction.
+Qed.
+
+
 Lemma d_min_holds_collision_free_step : forall (cf cf' cr cr' : car_st),
   d_min_holds cf cr -> same_lane cf cr -> step cf cf' -> step cr cr' -> collision_free_step cf cf' cr cr'.
 Proof.
@@ -861,17 +988,7 @@ Proof.
   unfold collision_free_step.
   split.
   {
-    unfold d_min_holds in init_d_min.
-    unfold step in stepf.
-    unfold step in stepr.
-    unfold collision.
-    intuition.
-    + apply Qle_lt_trans with (x:=c_x cf) (y:=c_x cr) (z:=c_rear_x cf) in H29 as A0; trivial.
-      assert (c_rear_x cf < c_x cf) as A1 by apply car_rear_lt.
-      apply Qlt_not_lt in A1.
-      contradiction.
-    + apply Qlt_not_le in H0.
-      contradiction.
+    apply d_min_holds_no_inst_collision; trivial.
   }
   split; trivial.
   split; trivial.
@@ -933,33 +1050,222 @@ Proof.
 Qed.
 
 
-Lemma d_min_holds_response_dist : forall (cf cf' cr cr' : car_st),
-  d_min_holds cf cr -> same_lane cf cr -> step cf cf' -> step cr cr' -> 
-    (c_rear_x cf' - c_x cr' > (max_stopping_dist cr - min_stopping_dist cf)).
+Lemma d_min_holds_response_dist : forall (c c' : car_st*car_st),
+  d_min_holds_p c -> d_min_step c c' -> 
+    (c_rear_x (front c') - c_x (rear c') > (max_stopping_dist (rear c) - min_stopping_dist (front c))).
 Proof.
-  intros * init_d_min lane stepf stepr.
-  unfold d_min_holds in init_d_min.
-  apply no_reverse_driving_rear in stepf as fRearDiff.
-  unfold step in stepf.
-  unfold step in stepr.
-  intuition.
-  apply Qplus_l_lt_sub_l with (a:=c_x cr').
-  rewrite H3.
+  intros * InitDMin DStep.
+  unfold d_min_holds_p in InitDMin.
+  unfold d_min_holds in InitDMin.
+  unfold d_min_step in DStep.
+  unfold parallel_step in DStep.
+  unfold front in *.
+  unfold rear in *.
+  destruct DStep as (DMinInv & StepF & StepR).
+  apply no_reverse_driving_rear in StepF as fRearDiff.
+  unfold step in *.
+  apply Qplus_l_lt_sub_l with (a:=c_x (snd c')).
+  destruct StepR as [K0 StepR].
+  rewrite K0.
   rewrite <- !Qplus_assoc.
-  apply Qplus_l_lt_sub_l with (a:=c_x cr).
+  apply Qplus_l_lt_sub_l with (a:=c_x (snd c)).
   rewrite !Qplus_neg, !Qplus_assoc.
-  apply Qlt_r_plus_le_weak_l with (a:=c_rear_x cf); trivial.
-  rewrite Qplus_comm with (y:=c_a cr * dt ^ 2 / (2 # 1)).
+  apply Qlt_r_plus_le_weak_l with (a:=c_rear_x (fst c)); trivial.
+  rewrite Qplus_comm with (y:=c_a (snd c) * dt ^ 2 / (2 # 1)).
   rewrite <- !Qplus_assoc.
   apply Qlt_l_plus_le_weak_l with (a:=a_max * dt ^ 2 / (2 # 1)).
   - rewrite !Qplus_assoc, <- !Qplus_neg.
     rewrite Qplus_comm with (x:=a_max * dt ^ 2 / (2 # 1)).
-    assumption.
+    intuition.
   - rewrite !Qsquare, !Qdiv_mult_inv, !Qmult_assoc.
     repeat apply Qmult_le_compat_r; auto with qarith.
+    intuition.
 Qed.
 
 
+
+Lemma same_lane_refl : forall (c : car_st), same_lane c c.
+Proof.
+  intros.
+  unfold same_lane.
+  reflexivity.
+Qed.
+
+Lemma same_lane_trans : forall (c c' c'' : car_st), same_lane c c' -> same_lane c' c'' -> same_lane c c''.
+Proof.
+  intros * L1 L2.
+  unfold same_lane in *.
+  rewrite L1, L2.
+  reflexivity.
+Qed.
+
+Lemma step_same_lane : forall (c c' : car_st),
+  step c c' -> same_lane c c'.
+Proof.
+  intros * Step.
+  unfold step in Step.
+  intuition.
+Qed.
+
+(* This will have to be relaxed somehow *)
+Lemma multi_step_same_lane : forall (c c' : car_st),
+  multi step c c' -> same_lane c c'.
+Proof.
+  intros * MStep.
+  induction MStep.
+  - apply same_lane_refl.
+  - apply step_same_lane in H.
+    apply same_lane_trans with (c':=y); trivial.
+Qed.
+
+Lemma d_min_step_fst : forall (c c' : car_st*car_st),
+  d_min_step c c' -> step (fst c) (fst c').
+Proof.
+  intros * DStep.
+  unfold d_min_step in DStep.
+  unfold parallel_step in DStep.
+  intuition.
+Qed.
+
+Lemma d_min_step_snd : forall (c c' : car_st*car_st),
+  d_min_step c c' -> step (snd c) (snd c').
+Proof.
+  intros * DStep.
+  unfold d_min_step in DStep.
+  unfold parallel_step in DStep.
+  intuition.
+Qed.
+
+
+Lemma multi_d_min_step_multi_step_fst : forall (c c' : car_st*car_st),
+  multi d_min_step c c' -> multi step (fst c) (fst c').
+Proof.
+  intros * MDStep.
+  induction MDStep.
+  - apply multi_refl.
+  - apply d_min_step_fst in H.
+    apply multi_R in H.
+    apply multi_trans with (y:=(fst y)); trivial.
+Qed.
+
+Lemma multi_d_min_step_multi_step_snd : forall (c c' : car_st*car_st),
+  multi d_min_step c c' -> multi step (snd c) (snd c').
+Proof.
+  intros * MDStep.
+  induction MDStep.
+  - apply multi_refl.
+  - apply d_min_step_snd in H.
+    apply multi_R in H.
+    apply multi_trans with (y:=(snd y)); trivial.
+Qed.
+
+
+Lemma d_min_init_no_collision : forall (c : car_st*car_st), (d_min_holds_p c) -> ~ collision (fst c) (snd c).
+Proof.
+  intros * InitDMin.
+  unfold d_min_holds_p in InitDMin.
+  unfold d_min_holds in InitDMin.
+  unfold collision.
+  intuition.
+Admitted.
+
+
+Lemma multi_dmin_step_multi_parallel_step : forall (c c' : car_st*car_st), 
+  multi d_min_step c c' -> multi parallel_step c c'.
+Proof.
+  intros * MDStep.
+  induction MDStep.
+  - apply multi_refl.
+  - unfold d_min_step in H.
+    intuition.
+    apply multi_R in H1.
+    apply multi_trans with (y:=y); trivial.
+Qed.
+
+
+Lemma d_min_transition_invariant : forall (c c' : car_st*car_st),
+  (d_min_holds_p c) -> same_lane (fst c) (snd c)  -> multi d_min_step c c' -> ~(d_min_holds_p c') ->
+  (exists (a b : car_st*car_st), multi d_min_step c a /\ d_min_step a b /\ multi d_min_step b c' /\ 
+    (d_min_holds_p a /\ ~ d_min_holds_p b)).
+Proof.
+Admitted.
+
+Lemma d_min_transition_invariant2 : forall (c c' : car_st*car_st),
+  (d_min_holds_p c) -> same_lane (fst c) (snd c) -> multi d_min_step c c' -> ~(d_min_holds_p c') ->
+  (exists (a : car_st*car_st), 
+    multi d_min_step c a /\
+    multi d_min_step a c' /\ 
+    d_min_holds_p a /\
+    (forall (a' : car_st*car_st), a' <> a -> multi d_min_step a a' -> multi d_min_step a' c' -> ~ d_min_holds_p a')).
+Proof.
+Admitted.
+
+
+Lemma d_min_step_max_acc : forall (c c' : car_st*car_st), 
+  d_min_step c c' -> ~(d_min_holds_p c) -> (c_a (snd c) <= a_br_req).
+Proof.
+  intros * DStep DH.
+  unfold d_min_step in DStep.
+  intuition.
+Qed.
+
+(* 
+Lemma d_min_acc_bound : forall (c c' c'' : car_st*car_st),
+  multi d_min_step c c' -> multi d_min_step c' c'' -> ~ d_min_holds_p c' -> c_a (snd c') <= a_br_req.
+Proof.
+
+Qed.
+ *)
+Lemma d_min_safe_multi_step : forall (c c' : car_st*car_st),
+  (d_min_holds_p c) -> same_lane (fst c) (snd c)  -> multi d_min_step c c' -> collision_free_multi_dmin_step c c'.
+Proof.
+  intros * InitDMin L0 MDStep.
+  unfold collision_free_multi_dmin_step.
+  
+  split.
+  {
+    now (apply d_min_init_no_collision).
+  }
+
+  split; trivial.
+  intros * MDStep0 MDStep1 L2.
+  split.
+  {
+    assert (d_min_holds_p c'' \/ ~d_min_holds_p c'') as C.
+    { admit. }
+    destruct C.
+    - now (apply d_min_init_no_collision).
+    - apply d_min_transition_invariant2 with (c':=c'') in InitDMin as Inv; trivial.
+      destruct Inv as [a Inv].
+      destruct Inv as (IStep0 & IStep1 & DMinHold1 & DMinHold2).
+
+      apply d_min_acc_bound in DMinHold2.
+
+(*     - apply d_min_transition_invariant with (c':=c'') in InitDMin as Inv; trivial.
+      destruct Inv as [x Inv].
+      destruct Inv as [y Inv].
+      destruct Inv as (IStep0 & IStep1 & IStep2 & DMinHold1 & DMinHold2).
+      apply d_min_holds_response_dist with (c':=y) in DMinHold1 as Dist0; trivial.
+      
+      apply multi_dmin_step_multi_parallel_step in IStep2 as IMStep2.
+      apply multi_parallel_multi_step_fst in IMStep2 as IMStepFront2.
+      apply multi_parallel_multi_step_snd in IMStep2 as IMStepRear2.
+      
+      unfold collision.
+      intro G.
+      destruct G as [L2' G]; clear L2'.
+      destruct G as [G|G].
+      
+      apply multi_step_dist in IMStepFront2 as DistFront. *)
+  }
+
+  split.
+  {
+    admit.
+  }
+
+  admit.
+Qed.
 
 
 End RoadContext.

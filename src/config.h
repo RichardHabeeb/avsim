@@ -3,7 +3,7 @@
 
 #define CFG_TICK_SLP_US (1000*10)
 #define CFG_TICKS_PER_S (1000*1000 / CFG_TICK_SLP_US)
-#define CFG_NUM_CARS (10)
+#define CFG_NUM_CARS (40)
 #define CFG_SPACE_SCALE (1000)
 
 /* RENDERER PARAMS */
