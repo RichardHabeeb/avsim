@@ -618,12 +618,60 @@ Record car_st := {
   c_lane : nat;
 }.
 
-Definition equ_car_st (c c' :car_st) :=
+Definition eq_car_st (c c' :car_st) :=
   (c_x c) == (c_x c') /\
   (c_v c) == (c_v c') /\
   (c_a c) == (c_a c') /\
   (c_l c) == (c_l c') /\
   (c_lane c) = (c_lane c').
+
+Lemma eq_car_st_refl c : eq_car_st c c.
+Proof. unfold eq_car_st. intuition. Qed.
+
+Lemma eq_car_st_sym c c' : eq_car_st c c' -> eq_car_st c' c.
+Proof. unfold eq_car_st. intuition. Qed.
+
+Lemma eq_car_st_trans c c' c'' : eq_car_st c c' -> eq_car_st c' c'' -> eq_car_st c c''.
+Proof. 
+  unfold eq_car_st. intuition.
+  - now (rewrite H1).
+  - now (rewrite H0).
+  - now (rewrite H3).
+  - now (rewrite H5).
+Qed.
+
+Global Instance eq_car_st_equiv : Equivalence eq_car_st.
+Proof.
+  split; hnf.
+  apply eq_car_st_refl.
+  apply eq_car_st_sym.
+  apply eq_car_st_trans.
+Qed.
+
+Definition eq_car_st_p (c c' : car_st*car_st) := 
+  (eq_car_st (fst c) (fst c')) /\ (eq_car_st (snd c) (snd c')).
+
+Lemma eq_car_st_p_refl c : eq_car_st_p c c.
+Proof. unfold eq_car_st_p. intuition. Qed.
+
+Lemma eq_car_st_p_sym c c' : eq_car_st_p c c' -> eq_car_st_p c' c.
+Proof. unfold eq_car_st_p. intuition. Qed.
+
+Lemma eq_car_st_p_trans c c' c'' : eq_car_st_p c c' -> eq_car_st_p c' c'' -> eq_car_st_p c c''.
+Proof.
+  unfold eq_car_st_p. intuition.
+  - now (rewrite H1).
+  - now (rewrite H2).
+Qed.
+
+Global Instance eq_car_st_p_equiv : Equivalence eq_car_st_p.
+Proof.
+  split; hnf.
+  apply eq_car_st_p_refl.
+  apply eq_car_st_p_sym.
+  apply eq_car_st_p_trans.
+Qed.
+
 
 Definition non_acc_equ_state (c1 c2 : car_st) := 
   (c_x c1 == c_x c2) /\
@@ -712,6 +760,64 @@ Definition collision_free_multi_dmin_step (c c' : car_st*car_st) :=
     (~(collision (fst c'') (snd c'')) /\
       (c_x (fst c) < c_x (snd c) -> c_x (fst c'') < c_x (snd c'')) /\ (* Relative orderings must be the same, no instantaneous passing *)
       (c_x (snd c) < c_x (fst c) -> c_x (snd c'') < c_x (fst c'')))).
+
+
+Global Instance step_morph : Proper (eq_car_st ==> eq_car_st ==> iff) (step).
+Proof.
+  hnf; intros * (X & V & A & L & Ln); hnf; intros * (X0 & V0 & A0 & L0 & Ln0).
+  unfold eq_car_st,step in *.
+  unfold same_lane in *.
+  split; intros S.
+  - rewrite !X,!V,!A,!L,!Ln in S.
+    rewrite !X0,!V0,!A0,!L0,!Ln0 in S.
+    trivial.
+  - rewrite <-!X,<-!V,<-!A,<-!L,<-!Ln in S.
+    rewrite <-!X0,<-!V0,<-!A0,<-!L0,<-!Ln0 in S.
+    trivial.
+Qed.
+
+Global Instance c_a_morph : Proper (eq_car_st ==> Qeq) (c_a).
+Proof.
+  hnf; intros * (X & V & A & L & Ln).
+  auto.
+Qed.
+
+Global Instance d_min_holds_morph : Proper (eq_car_st ==> eq_car_st ==> iff) (d_min_holds).
+Proof.
+  hnf; intros * (X & V & A & L & Ln); hnf; intros * (X0 & V0 & A0 & L0 & Ln0).
+  unfold eq_car_st,d_min_holds,max_stopping_dist,min_stopping_dist,c_rear_x in *.
+  split; intros S.
+  - rewrite !X,!V,!L in S.
+    rewrite !X0,!V0 in S.
+    trivial.
+  - rewrite <-!X,<-!V,<-!L in S.
+    rewrite <-!X0,<-!V0 in S.
+    trivial.
+Qed.
+
+Global Instance d_min_holds_p_morph : Proper (eq_car_st_p ==> iff) (d_min_holds_p).
+  hnf; intros * (Heq & Heq').
+  unfold eq_car_st_p, d_min_holds_p,rear,front in *.
+  rewrite Heq,Heq'.
+  intuition.
+Qed.
+
+Global Instance parallel_step_morph : Proper (eq_car_st_p ==> eq_car_st_p ==> iff) (parallel_step).
+Proof.
+  hnf; intros * (F & S); hnf; intros * (F' & S').
+  unfold parallel_step in *.
+  rewrite F,S,<-F',<-S'.
+  intuition.
+Qed.
+
+Global Instance d_min_step_morph : Proper (eq_car_st_p ==> eq_car_st_p ==> iff) (d_min_step).
+Proof.
+  hnf; intros * (F & S); hnf; intros * (F' & S').
+  unfold d_min_step,d_min_holds_p,front,rear,parallel_step in *.
+  rewrite !F,!S,<-F',<-S'.
+  intuition.
+Qed.
+
 
 
 
@@ -1001,47 +1107,6 @@ Qed.
 
 
 
-
-(*
-Lemma faster_car_bigger_const_multi_step : forall (c c' : car_st*car_st),
-  c_v (snd c) <= c_v (fst c) -> 
-  c_a (snd c) <= c_a (fst c) ->
-  multi parallel_step c c' ->
-  const_acc (fst c) (fst c') ->
-  const_acc (snd c) (snd c') ->
-  c_x (snd c') - c_x (snd c) <= c_x (fst c') - c_x (fst c) .
-Proof.
-  intros * VFaster AFaster MPStep AConst1 AConst2.
-
-  induction MPStep.
-  - rewrite !Qplus_neg, !Qplus_opp_r.
-    auto with qarith.
-  - assert (multi step (fst y) (fst z)) as MStepYZFst.
-    { apply multi_parallel_multi_step_fst; trivial. }
-    assert (multi step (snd y) (snd z)) as MStepYZSnd.
-    { apply multi_parallel_multi_step_snd; trivial. }
-
-    apply multi_step with (z0:=z) in H as MPStepXZ; trivial.
-    assert (multi step (fst x) (fst z)) as MStepXZFst.
-    { apply multi_parallel_multi_step_fst; trivial. }
-    assert (multi step (snd x) (snd z)) as MStepXZSnd.
-    { apply multi_parallel_multi_step_snd; trivial. }
-    
-    apply parallel_step_fst in H as StepFstXY.
-    apply parallel_step_snd in H as StepSndXY.
-    apply multi_R in StepFstXY as MStepFstXY.
-    apply multi_R in StepSndXY as MStepSndXY.
-    apply partial_const_acc with (c':=fst y) in AConst1 as AConstY1; trivial.
-    apply partial_const_acc with (c':=snd y) in AConst2 as AConstY2; trivial.
-
-    assert (c_a (snd y) <= c_a (fst y)).
-    {
-      
-    }
-    
-Qed.
-*)
-
 Lemma step_min_dist: forall (c c' cm cm' : car_st), 
   non_acc_equ_state c cm -> c_a cm == a_min -> step c c' -> step cm cm' -> (c_x cm' <= c_x c').
 Proof.
@@ -1069,15 +1134,15 @@ Lemma d_min_holds_no_inst_collision : forall (cf cr : car_st),
   d_min_holds cf cr -> same_lane cf cr -> ~ collision cf cr.
 Proof.
   intros * InitD Lane.
-    unfold d_min_holds in InitD.
-    unfold collision.
-    intuition.
-    + apply Qle_lt_trans with (x:=c_x cf) (y:=c_x cr) (z:=c_rear_x cf) in H5 as A0; trivial.
-      assert (c_rear_x cf < c_x cf) as A1 by apply car_rear_lt.
-      apply Qlt_not_lt in A1.
-      contradiction.
-    + apply Qlt_not_le in H0.
-      contradiction.
+  unfold d_min_holds in InitD.
+  unfold collision.
+  intuition.
+  + apply Qle_lt_trans with (x:=c_x cf) (y:=c_x cr) (z:=c_rear_x cf) in H5 as A0; trivial.
+    assert (c_rear_x cf < c_x cf) as A1 by apply car_rear_lt.
+    apply Qlt_not_lt in A1.
+    contradiction.
+  + apply Qlt_not_le in H0.
+    contradiction.
 Qed.
 
 Lemma d_min_holds_ordering : forall (c : car_st*car_st),
@@ -1315,29 +1380,9 @@ Proof.
 Admitted.
 
 
-
 Definition d_min_step_rear_bound_acc (c c' : car_st*car_st) (a : Q) := 
   (forall c'', multi d_min_step c c'' -> multi d_min_step c'' c' -> c_a (rear c'') <= a).
 
-(* Lemma step_min_dist: forall (c c' cm cm' : car_st), 
-  non_acc_equ_state c cm -> c_a cm == a_min -> step c c' -> step cm cm' -> (c_x cm' <= c_x c').
-Proof. *)
-
-
-
-(* Lemma multi_d_min_step_dist_bound: forall (c1 c1' c2 c2' : car_st*car_st), 
-  multi d_min_step c1 c1' -> multi d_min_step c2 c2' ->
-  non_acc_equ_state (rear c1) (rear c2) -> (front c1) = (front c2) -> (front c1') = (front c2') ->
-  const_acc (rear c2) (rear c2') -> c_a (rear c2) == a_br_req -> 
-  d_min_brake_mode c1 c1' ->
-  c_x (rear c1') - c_x (rear c1) <= c_x (rear c2') - c_x (rear c2).
-Proof.
-  intros * MDStep1 MDStep2 EQR EQF1 EQF2 ConstAcc InitAcc BrakeMode.
-  apply multi_d_min_step_multi_step_snd in MDStep2 as MStep2R.
-  SearchAbout (const_acc).
-  unfold front,rear in *.
-  apply multi_step_dist in MStep2R as D0; trivial.
-Admitted. *)
 
 Definition d_min_compare_step (c1 c2 : (car_st*car_st)*(car_st*car_st)) :=
   d_min_step (fst c1) (fst c2) /\ d_min_step (snd c1) (snd c2).
@@ -1345,74 +1390,6 @@ Definition d_min_compare_step (c1 c2 : (car_st*car_st)*(car_st*car_st)) :=
 Definition d_min_compare_const_front (c c'': (car_st*car_st)*(car_st*car_st)) :=
   forall (c': (car_st*car_st)*(car_st*car_st)), 
     multi d_min_compare_step c c' -> multi d_min_compare_step c' c'' -> (front (fst c')) = (front (snd c')).
-
-
-(* Lemma multi_R_alt_path : forall (c c' : car_st),
-  multi step c c' -> 
-  (exists (d d' : car_st), multi step d d' /\ non_acc_equ_state c d).
-Proof.
-  intros * MS.
-  eexists.
-  eexists.
-  split.
-  - apply MS.
-  - unfold non_acc_equ_state.
-    intuition.
-Qed.
-
-Lemma multi_d_min_step_alt_path : forall (c c' : car_st*car_st),
-  multi d_min_step c c' ->
-  (exists (d d' : car_st*car_st),
-    multi d_min_step d d' /\
-    non_acc_equ_state (rear c) (rear d)).
-Proof.
-  intros * MDStep0.
-  eexists.
-  eexists.
-  split.
-  - apply MDStep0.
-  - unfold non_acc_equ_state.
-    intuition.
-Qed. *)
-
-
-(* Lemma alt_acc_state : forall (c : car_st) (a : Q),
-  (exists (d : car_st), c_a d == a /\ non_acc_equ_state c d).
-Proof.
-  intros *.
-
-  Check Build_car_st.
-(*   c_x : Q;
-  c_v : Q;
-  c_a : Q;
-  c_l : Q;
-  c_lane : nat;
-  c_ts : nat; *)
-  exists (Build_car_st (c_x c) (c_v c) a (c_l c) (c_lane c) (c_ts c)).
-
-  unfold non_acc_equ_state.
-  simpl.
-  repeat split; try reflexivity.
-Qed.
- *)
-
-(* Lemma multi_d_min_step_alt_path_br_req : forall (c c' : car_st*car_st),
-  multi d_min_step c c' ->
-  (exists (d d' : car_st*car_st),
-    multi d_min_step d d' /\
-    non_acc_equ_state (rear c) (rear d) /\
-    const_acc (rear d) (rear d') /\
-    c_a (rear d) == a_br_req).
-Proof.
-  intros * MDStep0.
-  eexists.
-  eexists.
-  eexists.
-  - admit.
-  - eexists.
-    eexists.
-  repeat eexists.
-Qed. *)
 
 
 
@@ -1447,7 +1424,8 @@ Definition state_within_bounds (c: car_st) :=
   c_x c <= c_x c + c_v c * dt + c_a c * (dt * dt) / (2 # 1).
 
 Definition scenario_within_bounds (c: car_st*car_st) :=
-  state_within_bounds (fst c) /\ state_within_bounds (snd c).
+  state_within_bounds (fst c) /\ state_within_bounds (snd c) /\
+  (~ d_min_holds_p c -> c_a (rear c) <= a_br_req).
 
 Lemma can_step : forall (c: car_st), 
   state_within_bounds c -> (exists c' : car_st, step c c').
@@ -1457,24 +1435,22 @@ Proof.
   exists (Build_car_st
     (c_x c + c_v c * dt + c_a c * dt ^ 2 / (2 # 1))
     (c_v c + c_a c * dt)
-    0
+    (c_a c)
     (c_l c)
     (c_lane c)).
   unfold same_lane.
   unfold state_within_bounds in H.
   simpl.
   intuition.
-  apply Qle_lt_trans with (z:=0) in BrakeMax; auto with qarith.
 Qed.
 
-Lemma can_dmin_step : forall  (c : car_st*car_st),
+Lemma can_d_min_step : forall  (c : car_st*car_st),
   scenario_within_bounds c ->
-  (~ d_min_holds_p c -> c_a (rear c) <= a_br_req) ->
   (exists (c' : car_st*car_st), d_min_step c c').
 Proof.
   intros * B.
   unfold scenario_within_bounds in B.
-  destruct B as [FB SB].
+  destruct B as [FB [SB B]].
   apply can_step in FB.
   apply can_step in SB.
   destruct FB as [fc' Sf].
@@ -1487,9 +1463,58 @@ Proof.
   split; auto.
 Qed.
 
+Lemma step_within_bounds : forall (c c' : car_st), step c c' -> state_within_bounds c.
+Proof.
+  intros * S.
+  unfold state_within_bounds,step in *.
+  intuition.
+  - now (rewrite H1 in H5).
+  - now (rewrite H in H7).
+Qed.
 
+Lemma d_min_step_within_bounds : forall (c c' : car_st*car_st), d_min_step c c' -> scenario_within_bounds c.
+Proof.
+  intros * S.
+  unfold scenario_within_bounds, d_min_step, parallel_step in *.
+  destruct S as (B & SF & SS).
+  apply step_within_bounds in SF.
+  apply step_within_bounds in SS.
+  auto.
+Qed.
 
-Lemma step_no_loop : forall (c c' : car_st), step c c' -> step c' c -> equ_car_st c c'.
+Lemma can_const_acc_step : forall (c: car_st), 
+  state_within_bounds c -> (exists c' : car_st, step c c' /\ const_acc c c').
+Proof.
+  intros.
+  unfold step.
+  exists (Build_car_st
+    (c_x c + c_v c * dt + c_a c * dt ^ 2 / (2 # 1))
+    (c_v c + c_a c * dt)
+    (c_a c)
+    (c_l c)
+    (c_lane c)).
+  unfold same_lane, const_acc.
+  unfold state_within_bounds in H.
+  simpl.
+  intuition.
+Qed.
+
+Lemma can_const_acc_d_min_step : forall  (c : car_st*car_st),
+  scenario_within_bounds c ->
+  (exists (c' : car_st*car_st), d_min_step c c' /\ c_a (snd c) == c_a (snd c')).
+Proof.
+  intros * B.
+  unfold scenario_within_bounds in B.
+  destruct B as [FB [SB B]].
+  apply can_step in FB.
+  apply can_const_acc_step in SB.
+  destruct FB as [fc' Sf].
+  destruct SB as [sc' Ss].
+  pose (c':=(fc',sc')).
+  exists c'.
+Qed.
+
+Lemma step_no_loop : forall (c c' : car_st), step c c' -> step c' c -> eq_car_st c c'.
 Proof.
   intros * S0 S1.
   apply no_reverse_driving in S0 as E0.
@@ -1593,7 +1618,6 @@ Proof.
     apply Qeq_neg with (a:=c_v c') in E2.
     rewrite Qneg_0 in E2.
     rewrite E2, Qplus_0_l in V0.
-    SearchAbout (_*_==0).
     apply Qmult_eq_0_l with (a:=c_a c) in PosT.
     apply Qeq_sym, PosT in V0; trivial.
   }
@@ -1624,82 +1648,17 @@ Proof.
     reflexivity.
   }
 
-  unfold equ_car_st.
+  unfold eq_car_st.
   intuition.
 Qed.
 
-(* 
-Lemma multi_step_no_loop : forall (c c' c'' : car_st), step c c' -> multi step c' c'' -> step c'' c -> equ_car_st c c''.
-Proof.
-  intros * S0 MS S1.
-  induction MS.
-  - apply step_no_loop in S1; trivial.
-  -
-Qed. *)
-
-(*
-Lemma multi_step_no_loop : forall (c c' : car_st), multi step c c' -> multi step c' c -> c' = c.
-Proof.
-  intros * MS0 MS1.
-  apply multi_no_reverse_driving in MS0 as E0.
-  apply Qle_antisym in E0; [|apply multi_no_reverse_driving in MS1; trivial].
-
-  
-
-  induction MS0.
-  - reflexivity.
-  - apply multi_R in H as MS2.
-    apply (multi_trans (car_st) (step) z x y) in MS1 as MS3; trivial.
-
-    apply multi_no_reverse_driving in MS3 as E1.
-    apply IHMS0 in MS3 as EQ0.
-    rewrite <- EQ0 in H.
-    clear MS0 MS2 MS3 IHMS0 EQ0 y.
-    apply no_reverse_driving in H as E0.
-
-    apply Qle_antisym in E0; [|apply multi_no_reverse_driving in MS1; trivial].
-    clear H.
-
-    induction MS1.
-    * reflexivity.
-    * apply no_reverse_driving in H as E1.
-      apply multi_no_reverse_driving in MS1 as E2.
-      rewrite <- E0 in E2.
-      apply Qle_antisym in E1; trivial.
-      
-
-    
-    unfold step in H.
-    destruct H as (D & V & H).
-    rewrite E0 in D.
-    rewrite <- Qplus_assoc, Qplus_r_equ_sub_l, Qplus_neg, Qplus_opp_r in D.
-    
-    SearchAbout (_ == _ + _).
-
-
-    induction MS1.
-    * reflexivity.
-    *
-
-    assert (x = y \/ ~ x = y) as C by admit.
-    destruct C as [C0 | C1].
-    * rewrite C0; trivial.
-    * induction MS1. { reflexivity. }
-      apply multi_R in H0 as MS3.
-        apply (multi_trans (car_st) (step) y x y0) in MS0; trivial.
-        apply IHMS1 in H as EQ1; trivial.
-
-    
-    
-Qed.
- *)
-
 
 Lemma can_multi_dmin_step_const_acc_snd : forall  (c : car_st*car_st),
+  scenario_within_bounds c ->
   (exists (c' : car_st*car_st), multi d_min_step c c' /\ const_acc (snd c) (snd c')).
 Proof.
-  intros *.
-
+  intros * B.
+  apply can_d_min_step in B.
   exists c.
   split.
   - apply multi_refl.
