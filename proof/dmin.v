@@ -51,6 +51,15 @@ Proof.
   ring.
 Qed.
 
+Lemma Qeq_neg : forall a b, - a == b <-> a == -b.
+Proof.
+  intros.
+  split; intros; 
+    rewrite <- Qmult_neg_1;
+    apply Qmult_inj_r with (z:=-(1)); auto with qarith;
+    rewrite !Qmult_neg_1, Qopp_opp; trivial.
+Qed.
+
 Lemma Qdiv_neg_l: forall a b, (-a)/b == -(a/b).
 Proof.
   intros.
@@ -63,6 +72,13 @@ Proof.
   rewrite Qmult_neg_1.
   rewrite Qmult_comm.
   rewrite Qdiv_mult_inv.
+  reflexivity.
+Qed.
+
+Lemma Qmult_neg_l: forall a b, (-a)*b == -(a*b).
+Proof.
+  intros *.
+  rewrite <- Qmult_neg_1, Qmult_comm, Qmult_assoc, Qmult_neg_1, Qmult_comm.
   reflexivity.
 Qed.
 
@@ -110,6 +126,77 @@ Lemma Qlt_not_lt: forall a b, a < b -> ~ b < a.
 Proof.
   intros.
   auto with qarith.
+Qed.
+
+
+Lemma Qmult_lt_0 : forall a b, b > 0 -> a * b < 0 <-> a < 0.
+Proof.
+  intros * Hb.
+  split; intros H.
+  {
+    apply Qmult_lt_r with (z:=/b) in H.
+    - rewrite <- !Qdiv_mult_inv, Qdiv_mult_l in H; auto with qarith.
+      rewrite Qdiv_mult_inv, Qmult_0_l in H; trivial.
+    - apply Qinv_lt_0_compat; trivial.
+  }
+  apply Qmult_lt_r with (z:=/b).
+  - apply Qinv_lt_0_compat; trivial.
+  - rewrite <- !Qdiv_mult_inv, Qdiv_mult_l; auto with qarith.
+    rewrite Qdiv_mult_inv, Qmult_0_l; trivial.
+Qed.
+
+Lemma Qmult_0_lt : forall a b, b > 0 -> a * b > 0 <-> a > 0.
+Proof.
+  intros * Hb.
+  split; intros H.
+  {
+    apply Qmult_lt_r with (z:=/b) in H.
+    - rewrite <- !Qdiv_mult_inv, Qdiv_mult_l in H; auto with qarith.
+      rewrite Qdiv_mult_inv, Qmult_0_l in H; trivial.
+    - apply Qinv_lt_0_compat; trivial.
+  }
+  apply Qmult_lt_r with (z:=/b).
+  - apply Qinv_lt_0_compat; trivial.
+  - rewrite <- !Qdiv_mult_inv, Qdiv_mult_l; auto with qarith.
+    rewrite Qdiv_mult_inv, Qmult_0_l; trivial.
+Qed.
+
+Lemma Qmult_eq_0_l : forall a b, b > 0 -> a * b == 0 <-> a == 0.
+Proof.
+  intros * Hb.
+  split; intros H.
+  {
+    apply Qmult_inj_r with (z:=b); auto with qarith.
+    rewrite Qmult_0_l; trivial.
+  }
+  apply Qmult_inj_r with (z:=b) in H; auto with qarith.
+  rewrite Qmult_0_l in H; trivial.
+Qed.
+
+
+Lemma Qeq_by_elim : forall a, ~ a < 0 -> ~ 0 < a -> a == 0.
+Proof.
+  intros.
+  destruct (Q_dec (a) 0) as [[? | ?] | ?]; try contradiction.
+  trivial.
+Qed.
+
+Lemma Qeq_0_by_eq_neg : forall a b, - a == b -> a == b -> a == 0.
+Proof.
+  intros * Hn He.
+  rewrite He in Hn.
+  destruct (Q_dec (b) 0) as [[C | C] | C].
+  - apply Qlt_not_lt in C as C0.
+    rewrite <- Hn in C.
+    apply Qlt_0_neg_lt_not_l in C.
+    apply Qeq_by_elim in C; trivial.
+    rewrite <- He in C; trivial.
+  - apply Qlt_not_lt in C as C0.
+    rewrite <- Hn in C.
+    apply Qlt_0_neg_lt_not_r in C.
+    apply Qeq_by_elim in C; trivial.
+    rewrite <- He in C; trivial.
+  - rewrite <- He in C; trivial.
 Qed.
 
 Lemma Qplus_l_equ_sub_r: forall a b c, a + b == c <-> a == c - b.
@@ -529,8 +616,25 @@ Record car_st := {
   c_a : Q;
   c_l : Q;
   c_lane : nat;
-  c_ts : nat;
 }.
+
+Definition equ_car_st (c c' :car_st) :=
+  (c_x c) == (c_x c') /\
+  (c_v c) == (c_v c') /\
+  (c_a c) == (c_a c') /\
+  (c_l c) == (c_l c') /\
+  (c_lane c) = (c_lane c').
+
+Definition non_acc_equ_state (c1 c2 : car_st) := 
+  (c_x c1 == c_x c2) /\
+  (c_v c1 == c_v c2) /\
+  (c_l c1 == c_l c2) /\
+  (c_lane c1 = c_lane c2).
+
+Definition acc_choice (c : car_st) (a : Q) := (Build_car_st (c_x c) (c_v c) a (c_l c) (c_lane c)).
+Definition acc_choice_p_snd (c : car_st*car_st) (a : Q) :=
+  ((fst c), (Build_car_st (c_x (snd c)) (c_v (snd c)) a (c_l (snd c)) (c_lane (snd c)))).
+
 
 Variables dt a_max a_min a_br_req : Q.
 
@@ -558,10 +662,7 @@ Definition step (c : car_st) (c' : car_st) :=
   (* Single lane (for now) *)
   (same_lane c c') /\
   (* Constant/Positive length *)
-  (c_l c == c_l c') /\
-  (* Increase timestamp *)
-  (c_ts c' = S (c_ts c)).
-
+  (c_l c == c_l c').
 
 Definition const_acc (c c' : car_st) := (forall c'', multi step c c'' -> multi step c'' c' -> c_a c == c_a c'').
 
@@ -586,15 +687,6 @@ Definition collision_free_step (c1 c1' c2 c2' : car_st) :=
   (c_x c2 < c_x c1 -> c_x c2' < c_x c1').
 Definition collision_free_step_p (c c' : car_st*car_st) := collision_free_step (fst c) (fst c') (snd c) (snd c').
 
-
-
-
-Definition non_acc_equ_state (c1 c2 : car_st) := 
-  (c_x c1 == c_x c2) /\
-  (c_v c1 == c_v c2) /\
-  (c_l c1 == c_l c2) /\
-  (c_lane c1 = c_lane c2) /\
-  (c_ts c1 = c_ts c2).
 
 Definition max_stopping_dist (c : car_st) := -((c_v c + a_max*dt)^2)/((2#1)*a_br_req).
 Definition min_stopping_dist (c : car_st) := -((c_v c)^2)/((2#1)*a_min).
@@ -650,7 +742,7 @@ Proof.
   unfold c_rear_x.
   rewrite !Qplus_neg.
   intuition.
-  rewrite H9.
+  rewrite H10.
   apply Qplus_le_compat; auto with qarith.
 Qed.
 
@@ -1044,7 +1136,7 @@ Proof.
       apply Qmult_le_compat_r; auto with qarith.
     - unfold c_rear_x.
       rewrite !Qplus_neg.
-      rewrite H22.
+      rewrite H23.
       rewrite Qplus_le_l; trivial.
   }
 
@@ -1183,8 +1275,16 @@ Proof.
   unfold d_min_holds_p in InitDMin.
   unfold d_min_holds in InitDMin.
   unfold collision.
-  intuition.
-Admitted.
+  intro G.
+  destruct InitDMin as (InitOrder & InitDMin).
+  unfold front,rear in *.
+  destruct G as (L & [[E0 E1] | [E0 E1]]).
+  - apply Qle_lt_trans with (z:=c_rear_x (fst c)) in E1; trivial.
+    now (apply car_rear_lt_false in E1).
+  - apply Qlt_le_trans with (z:=c_x (snd c)) in InitOrder; trivial.
+    apply Qlt_irrefl in InitOrder.
+    contradiction.
+Qed.
 
 
 Lemma multi_dmin_step_multi_parallel_step : forall (c c' : car_st*car_st), 
@@ -1200,32 +1300,12 @@ Proof.
 Qed.
 
 
-(* Lemma d_min_transition_invariant : forall (c c' : car_st*car_st),
-  (d_min_holds_p c) -> same_lane (fst c) (snd c)  -> multi d_min_step c c' -> ~(d_min_holds_p c') ->
-  (exists (a b : car_st*car_st), multi d_min_step c a /\ d_min_step a b /\ multi d_min_step b c' /\ 
-    (d_min_holds_p a /\ ~ d_min_holds_p b)).
-Proof.
-Admitted.
-
-
-
-Lemma d_min_transition_invariant2 : forall (c c' : car_st*car_st),
-  (d_min_holds_p c) -> same_lane (fst c) (snd c) -> multi d_min_step c c' -> ~(d_min_holds_p c') ->
-  (exists (a : car_st*car_st), 
-    multi d_min_step c a /\
-    multi d_min_step a c' /\ 
-    d_min_holds_p a /\
-    (forall (a' : car_st*car_st), a' <> a -> multi d_min_step a a' -> multi d_min_step a' c' -> ~ d_min_holds_p a')).
-Proof.
-Admitted. *)
-
-
 Definition d_min_brake_mode (c c'' : car_st*car_st) :=
   (forall (c' : car_st*car_st), multi d_min_step c c' -> multi d_min_step c' c'' -> ~ d_min_holds_p c').
 
-Lemma d_min_transition_invariant3 : forall (c c' : car_st*car_st),
+Lemma d_min_transition_invariant : forall (c c' : car_st*car_st),
   (d_min_holds_p c) -> same_lane (fst c) (snd c) -> multi d_min_step c c' -> ~(d_min_holds_p c') ->
-  (exists (i i' : car_st*car_st), 
+  (exists (i i' : car_st*car_st),
     multi d_min_step c i /\
     d_min_step i i' /\
     multi d_min_step i' c' /\ 
@@ -1236,6 +1316,429 @@ Admitted.
 
 
 
+Definition d_min_step_rear_bound_acc (c c' : car_st*car_st) (a : Q) := 
+  (forall c'', multi d_min_step c c'' -> multi d_min_step c'' c' -> c_a (rear c'') <= a).
+
+(* Lemma step_min_dist: forall (c c' cm cm' : car_st), 
+  non_acc_equ_state c cm -> c_a cm == a_min -> step c c' -> step cm cm' -> (c_x cm' <= c_x c').
+Proof. *)
+
+
+
+(* Lemma multi_d_min_step_dist_bound: forall (c1 c1' c2 c2' : car_st*car_st), 
+  multi d_min_step c1 c1' -> multi d_min_step c2 c2' ->
+  non_acc_equ_state (rear c1) (rear c2) -> (front c1) = (front c2) -> (front c1') = (front c2') ->
+  const_acc (rear c2) (rear c2') -> c_a (rear c2) == a_br_req -> 
+  d_min_brake_mode c1 c1' ->
+  c_x (rear c1') - c_x (rear c1) <= c_x (rear c2') - c_x (rear c2).
+Proof.
+  intros * MDStep1 MDStep2 EQR EQF1 EQF2 ConstAcc InitAcc BrakeMode.
+  apply multi_d_min_step_multi_step_snd in MDStep2 as MStep2R.
+  SearchAbout (const_acc).
+  unfold front,rear in *.
+  apply multi_step_dist in MStep2R as D0; trivial.
+Admitted. *)
+
+Definition d_min_compare_step (c1 c2 : (car_st*car_st)*(car_st*car_st)) :=
+  d_min_step (fst c1) (fst c2) /\ d_min_step (snd c1) (snd c2).
+
+Definition d_min_compare_const_front (c c'': (car_st*car_st)*(car_st*car_st)) :=
+  forall (c': (car_st*car_st)*(car_st*car_st)), 
+    multi d_min_compare_step c c' -> multi d_min_compare_step c' c'' -> (front (fst c')) = (front (snd c')).
+
+
+(* Lemma multi_R_alt_path : forall (c c' : car_st),
+  multi step c c' -> 
+  (exists (d d' : car_st), multi step d d' /\ non_acc_equ_state c d).
+Proof.
+  intros * MS.
+  eexists.
+  eexists.
+  split.
+  - apply MS.
+  - unfold non_acc_equ_state.
+    intuition.
+Qed.
+
+Lemma multi_d_min_step_alt_path : forall (c c' : car_st*car_st),
+  multi d_min_step c c' ->
+  (exists (d d' : car_st*car_st),
+    multi d_min_step d d' /\
+    non_acc_equ_state (rear c) (rear d)).
+Proof.
+  intros * MDStep0.
+  eexists.
+  eexists.
+  split.
+  - apply MDStep0.
+  - unfold non_acc_equ_state.
+    intuition.
+Qed. *)
+
+
+(* Lemma alt_acc_state : forall (c : car_st) (a : Q),
+  (exists (d : car_st), c_a d == a /\ non_acc_equ_state c d).
+Proof.
+  intros *.
+
+  Check Build_car_st.
+(*   c_x : Q;
+  c_v : Q;
+  c_a : Q;
+  c_l : Q;
+  c_lane : nat;
+  c_ts : nat; *)
+  exists (Build_car_st (c_x c) (c_v c) a (c_l c) (c_lane c) (c_ts c)).
+
+  unfold non_acc_equ_state.
+  simpl.
+  repeat split; try reflexivity.
+Qed.
+ *)
+
+(* Lemma multi_d_min_step_alt_path_br_req : forall (c c' : car_st*car_st),
+  multi d_min_step c c' ->
+  (exists (d d' : car_st*car_st),
+    multi d_min_step d d' /\
+    non_acc_equ_state (rear c) (rear d) /\
+    const_acc (rear d) (rear d') /\
+    c_a (rear d) == a_br_req).
+Proof.
+  intros * MDStep0.
+  eexists.
+  eexists.
+  eexists.
+  - admit.
+  - eexists.
+    eexists.
+  repeat eexists.
+Qed. *)
+
+
+
+Lemma alt_acc_choice : forall (c : car_st) (a : Q), non_acc_equ_state c (acc_choice c a).
+Proof.
+  intros *.
+  unfold non_acc_equ_state, acc_choice.
+  repeat split; reflexivity.
+Qed.
+
+Lemma alt_acc_choice_p_snd : forall (c : car_st*car_st) (a : Q), 
+  non_acc_equ_state (snd c) (snd (acc_choice_p_snd c a)) /\ (fst c) = (fst (acc_choice_p_snd c a)).
+Proof.
+  intros *.
+  unfold non_acc_equ_state,acc_choice_p_snd.
+  repeat split; reflexivity.
+Qed.
+
+
+Lemma can_multi_dmin_step : forall  (c : car_st*car_st),
+  (exists (c' : car_st*car_st), multi d_min_step c c').
+Proof.
+  intros *.
+  exists c.
+  apply multi_refl.
+Qed.
+
+Definition state_within_bounds (c: car_st) :=
+  a_min <= c_a c <= a_max /\
+  0 <= c_v c /\
+  0 <= c_v c + c_a c * dt /\
+  c_x c <= c_x c + c_v c * dt + c_a c * (dt * dt) / (2 # 1).
+
+Definition scenario_within_bounds (c: car_st*car_st) :=
+  state_within_bounds (fst c) /\ state_within_bounds (snd c).
+
+Lemma can_step : forall (c: car_st), 
+  state_within_bounds c -> (exists c' : car_st, step c c').
+Proof.
+  intros.
+  unfold step.
+  exists (Build_car_st
+    (c_x c + c_v c * dt + c_a c * dt ^ 2 / (2 # 1))
+    (c_v c + c_a c * dt)
+    0
+    (c_l c)
+    (c_lane c)).
+  unfold same_lane.
+  unfold state_within_bounds in H.
+  simpl.
+  intuition.
+  apply Qle_lt_trans with (z:=0) in BrakeMax; auto with qarith.
+Qed.
+
+Lemma can_dmin_step : forall  (c : car_st*car_st),
+  scenario_within_bounds c ->
+  (~ d_min_holds_p c -> c_a (rear c) <= a_br_req) ->
+  (exists (c' : car_st*car_st), d_min_step c c').
+Proof.
+  intros * B.
+  unfold scenario_within_bounds in B.
+  destruct B as [FB SB].
+  apply can_step in FB.
+  apply can_step in SB.
+  destruct FB as [fc' Sf].
+  destruct SB as [sc' Ss].
+  pose (c':=(fc',sc')).
+  exists c'.
+  unfold d_min_step.
+  split; trivial.
+  unfold parallel_step.
+  split; auto.
+Qed.
+
+
+
+Lemma step_no_loop : forall (c c' : car_st), step c c' -> step c' c -> equ_car_st c c'.
+Proof.
+  intros * S0 S1.
+  apply no_reverse_driving in S0 as E0.
+  apply Qle_antisym in E0; [|apply no_reverse_driving in S1; trivial].
+
+  assert (- c_a c' == c_a c) as E1.
+  {
+    unfold step in *.
+    destruct S0 as (D0 & V0 & S0).
+    destruct S1 as (D1 & V1 & S1).
+
+    rewrite E0, <- Qplus_assoc, Qplus_r_equ_sub_l, Qplus_neg, Qplus_opp_r in D0,D1.
+    rewrite V0, <- Qplus_assoc, Qplus_r_equ_sub_l, Qplus_neg, Qplus_opp_r in V1.
+
+    rewrite <- Qmult_plus_distr_l, Qdiv_inj with (c:=dt) in V1; auto with qarith.
+    rewrite Qdiv_mult_l, Qdiv_mult_inv, Qmult_0_l in V1; auto with qarith.
+
+    apply Qplus_inj_r with (z:=- c_a c') in V1.
+    rewrite <- Qplus_assoc, Qplus_opp_r, Qplus_0_r, Qplus_0_l in V1.
+    assumption.
+  }
+
+  assert (- c_v c' == c_v c) as E2.
+  {
+    unfold step in *.
+    destruct S0 as (D0 & V0 & S0).
+    destruct S1 as (D1 & V1 & S1).
+    rewrite E0, <- Qplus_assoc, Qplus_r_equ_sub_l, Qplus_neg, Qplus_opp_r in D0,D1.
+    apply Qplus_r_equ_sub_r in D1.
+    rewrite Qplus_neg, Qplus_0_l in D1.
+    rewrite Qdiv_mult_inv, <- Qmult_assoc, <- Qmult_neg_l, Qmult_assoc, <- Qdiv_mult_inv in D1.
+    rewrite E1 in D1.
+    rewrite D1, <- Qmult_sum2_dist_r in D0.
+    apply Qeq_sym in D0.
+    apply Qmult_eq_0_l in D0; trivial.
+    apply Qplus_inj_r with (z:=- c_v c') in D0.
+    rewrite <- Qplus_assoc, Qplus_opp_r, Qplus_0_r, Qplus_0_l in D0.
+    apply Qeq_sym; trivial.
+  }
+
+  assert (c_a c > 0 -> c_v c' > c_v c) as C0.
+  {
+    intros.
+    unfold step in S0.
+    destruct S0 as (D0 & V0 & S0).
+    rewrite V0.
+    apply Qplus_lt_l with (z:=-c_v c).
+    rewrite Qplus_comm with (y:=c_a c * dt), <- !Qplus_assoc, !Qplus_opp_r, Qplus_0_r.
+    apply Qmult_0_lt; trivial.
+  }
+
+  assert (c_a c' > 0 -> c_v c > c_v c') as C1.
+  {
+    intros.
+    unfold step in S1.
+    destruct S1 as (D1 & V1 & S1).
+    rewrite V1.
+    apply Qplus_lt_l with (z:=-c_v c').
+    rewrite Qplus_comm with (y:=c_a c' * dt), <- !Qplus_assoc, !Qplus_opp_r, Qplus_0_r.
+    apply Qmult_0_lt; trivial.
+  }
+
+  assert (c_v c == 0) as E3.
+  {
+    destruct (Q_dec (c_a c) 0) as [[? | ?] | H].
+    - rewrite <- E1 in q.
+      apply Qopp_lt_compat in q.
+      rewrite Qopp_opp, Qneg_0 in q.
+      apply C1 in q as ?.
+      unfold step in S0.
+      destruct S0 as (D0 & V0 & A0 & A0' & NN0 & NN0' & S0).
+      apply Qle_not_lt in NN0' as E3.
+      apply Qle_lt_trans with (z:=c_v c) in NN0' as E4; trivial.
+      rewrite <- E2 in E4.
+      apply Qlt_0_neg_lt_not_r in E4.
+      apply Qeq_by_elim in E4; trivial.
+      rewrite E4, Qneg_0 in E2.
+      apply Qeq_sym; trivial.
+    - apply C0 in q as ?.
+      unfold step in S0.
+      destruct S0 as (D0 & V0 & A0 & A0' & NN0 & NN0' & S0).
+      apply Qle_not_lt in NN0 as E3.
+      apply Qle_lt_trans with (z:=c_v c') in NN0 as E4; trivial.
+      apply Qeq_neg in E2.
+      rewrite E2 in E4.
+      apply Qlt_0_neg_lt_not_r in E4.
+      apply Qeq_by_elim in E4; trivial.
+    - unfold step in S0.
+      destruct S0 as (D0 & V0 & S0).
+      rewrite H, Qmult_0_l, Qplus_0_r in V0.
+      apply Qeq_0_by_eq_neg in V0; trivial.
+      rewrite V0, Qneg_0 in E2.
+      apply Qeq_sym; trivial.
+  }
+
+  assert (c_a c == 0) as E4.
+  {
+    unfold step in S0.
+    destruct S0 as (D0 & V0 & S0).
+    rewrite E3 in E2, V0.
+    apply Qeq_neg with (a:=c_v c') in E2.
+    rewrite Qneg_0 in E2.
+    rewrite E2, Qplus_0_l in V0.
+    SearchAbout (_*_==0).
+    apply Qmult_eq_0_l with (a:=c_a c) in PosT.
+    apply Qeq_sym, PosT in V0; trivial.
+  }
+
+  assert (c_l c == c_l c') as E5.
+  {
+    unfold step in S0.
+    intuition.
+  }
+
+  assert (c_lane c = c_lane c') as E6.
+  {
+    unfold step in S0.
+    intuition.
+  }
+
+  assert (c_a c == c_a c') as E7.
+  {
+    apply Qeq_neg in E1.
+    rewrite E1, E4, Qneg_0.
+    reflexivity.
+  }
+
+  assert (c_v c == c_v c') as E8.
+  {
+    apply Qeq_neg in E2.
+    rewrite E2, E3, Qneg_0.
+    reflexivity.
+  }
+
+  unfold equ_car_st.
+  intuition.
+Qed.
+
+(* 
+Lemma multi_step_no_loop : forall (c c' c'' : car_st), step c c' -> multi step c' c'' -> step c'' c -> equ_car_st c c''.
+Proof.
+  intros * S0 MS S1.
+  induction MS.
+  - apply step_no_loop in S1; trivial.
+  -
+Qed. *)
+
+(*
+Lemma multi_step_no_loop : forall (c c' : car_st), multi step c c' -> multi step c' c -> c' = c.
+Proof.
+  intros * MS0 MS1.
+  apply multi_no_reverse_driving in MS0 as E0.
+  apply Qle_antisym in E0; [|apply multi_no_reverse_driving in MS1; trivial].
+
+  
+
+  induction MS0.
+  - reflexivity.
+  - apply multi_R in H as MS2.
+    apply (multi_trans (car_st) (step) z x y) in MS1 as MS3; trivial.
+
+    apply multi_no_reverse_driving in MS3 as E1.
+    apply IHMS0 in MS3 as EQ0.
+    rewrite <- EQ0 in H.
+    clear MS0 MS2 MS3 IHMS0 EQ0 y.
+    apply no_reverse_driving in H as E0.
+
+    apply Qle_antisym in E0; [|apply multi_no_reverse_driving in MS1; trivial].
+    clear H.
+
+    induction MS1.
+    * reflexivity.
+    * apply no_reverse_driving in H as E1.
+      apply multi_no_reverse_driving in MS1 as E2.
+      rewrite <- E0 in E2.
+      apply Qle_antisym in E1; trivial.
+      
+
+    
+    unfold step in H.
+    destruct H as (D & V & H).
+    rewrite E0 in D.
+    rewrite <- Qplus_assoc, Qplus_r_equ_sub_l, Qplus_neg, Qplus_opp_r in D.
+    
+    SearchAbout (_ == _ + _).
+
+
+    induction MS1.
+    * reflexivity.
+    *
+
+    assert (x = y \/ ~ x = y) as C by admit.
+    destruct C as [C0 | C1].
+    * rewrite C0; trivial.
+    * induction MS1. { reflexivity. }
+      apply multi_R in H0 as MS3.
+        apply (multi_trans (car_st) (step) y x y0) in MS0; trivial.
+        apply IHMS1 in H as EQ1; trivial.
+
+    
+    
+Qed.
+ *)
+
+
+Lemma can_multi_dmin_step_const_acc_snd : forall  (c : car_st*car_st),
+  (exists (c' : car_st*car_st), multi d_min_step c c' /\ const_acc (snd c) (snd c')).
+Proof.
+  intros *.
+
+  exists c.
+  split.
+  - apply multi_refl.
+  - unfold const_acc.
+    intros * MS0 MS1.
+Qed.
+
+Lemma multi_d_min_step_alt_path_br_req : forall (c c' : car_st*car_st),
+  multi d_min_step c c' ->
+  (exists (d d' : car_st*car_st),
+    multi d_min_step d d' /\
+    non_acc_equ_state (rear c) (rear d) /\
+    const_acc (rear d) (rear d') /\
+    c_a (rear d) == a_br_req /\
+    multi d_min_compare_step (c, d) (c', d')).
+Proof.
+  intros * MDStep0.
+  pose (d:=(acc_choice_p_snd c a_br_req)).
+  exists d.
+  assert ((exists (d' : car_st*car_st), multi d_min_step d d')) as H by apply can_multi_dmin_step.
+  destruct H as [d' MDStep1].
+  exists d'.
+  repeat split; trivial.
+
+Qed.
+
+
+
+Lemma multi_d_min_step_dist_bound2: forall (c1 c1' c2 c2' : car_st*car_st), 
+  multi d_min_compare_step (c1, c2) (c1', c2') ->
+  non_acc_equ_state (rear c1) (rear c2) -> d_min_compare_const_front (c1, c2) (c1', c2') ->
+  const_acc (rear c2) (rear c2') -> c_a (rear c2) == a_br_req -> 
+  d_min_brake_mode c1 c1' ->
+  c_x (rear c1') - c_x (rear c1) <= c_x (rear c2') - c_x (rear c2).
+Proof.
+  intros * MDCStep EQR EQF1 EQF2 ConstAcc InitAcc BrakeMode.
+Admitted.
+
+
 Lemma d_min_safe_brake : forall (c c' c'' : car_st*car_st),
   d_min_step c c' ->
   multi d_min_step c' c'' ->
@@ -1244,6 +1747,9 @@ Lemma d_min_safe_brake : forall (c c' c'' : car_st*car_st),
   0 < c_rear_x (front c'') - c_x (rear c'').
 Proof.
   intros * DStep0 MDStep1 DBrake Dist0.
+(*   apply acc_choice_p_snd in c' as d'; [|exact a_br_req]. *)
+
+  
 Admitted.
 
 
@@ -1262,7 +1768,10 @@ Proof.
   intros * MDStep0 MDStep1 L2.
 
   assert (d_min_holds_p c'' \/ ~d_min_holds_p c'') as C.
-  { admit. }
+  { 
+    unfold d_min_holds_p, d_min_holds.
+    admit.
+  }
   destruct C.
   - split.
     {
@@ -1280,7 +1789,7 @@ Proof.
     intros.
     apply d_min_holds_ordering in H; trivial.
 
-  - apply d_min_transition_invariant3 with (c':=c'') in InitDMin as Inv; trivial.
+  - apply d_min_transition_invariant with (c':=c'') in InitDMin as Inv; trivial.
     destruct Inv as [i [i' (MDStepI0 & DStepI1 & MDStepI2 & DMinI1 & DMinI2)]].
     apply d_min_holds_response_dist with (c':=i') in DMinI1 as Dist0; trivial.
 
