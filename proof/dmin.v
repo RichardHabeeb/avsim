@@ -124,6 +124,15 @@ Proof.
   contradiction.
 Qed.
 
+Lemma Qlt_neg_lt : forall a, 0 < a <-> -a < 0.
+Proof.
+  intros; split; intros.
+  - apply Qopp_lt_compat in H.
+    now(rewrite Qneg_0 in H).
+  - apply Qopp_lt_compat in H.
+    now(rewrite Qneg_0,Qopp_opp in H).
+Qed.
+
 Lemma Qlt_not_lt: forall a b, a < b -> ~ b < a.
 Proof.
   intros.
@@ -513,47 +522,13 @@ Ltac minus_plus :=
           end
       end
   end.
-Ltac plus_opp_simpl :=
+Ltac  plus_opp_simpl :=
   first [progress plus_minus | progress minus_plus]; rewrite ?Qplus_opp_l, ?Qplus_opp_r, ?Qplus_0_r, ?Qplus_0_l.
 
 
 
-(*Hint Resolve*)
 
-Hint Rewrite
-  Qplus_neg
-  Qdiv_mult_inv
-  Qmult_neg_1
-  Qmult_inv_l
-  Qplus_double
-  Qplus_half
-  Qdiv_neg_l
-  Qplus_l_equ_sub_r
-  Qplus_l_equ_sub_l
-  Qplus_r_equ_sub_r
-  Qplus_r_equ_sub_l
-  Qplus_neg_half_l
-  Qmult_l_equ_div_r
-  Qdiv_inj
-  Qmult_dist_div
-  Qsquare
-  Qdiv_squared
-  Qdiv_dist_mult
-  Qdiv_div
-  Qpoly2_sub_dist
-  Qmult_sum2_dist_l
-  Qmult_sum2_dist_r
-  Qmult_sub2_dist_l
-  Qmult_sub2_dist_r
-  Qdiv_sum2_dist_r
-  Qdiv_diff2_dist_r
-  Qmult_sum3_dist_r
-  Qmult_sub_sum3_dist_r
-  Qdiv_sub_sum3_dist_r
-  Qdiv_mult4_cancel_1
-  Qdiv_mult3_cancel_1 : q_math_hints.
 
-Ltac q_math := ring || autorewrite with q_math_hints; auto with qarith.
 
 
 (** ##############################################################################
@@ -588,70 +563,136 @@ Proof.
       apply IHG. assumption.
 Qed.
 
-Lemma multi_2_step : forall (X : Type) (R : relation X) (c c' c'' : X), R c c' -> R c' c'' -> multi R c c''.
+Inductive multi' {X : Type} (R : relation X) : relation X :=
+  | multi_refl' : forall(x : X), multi' R x x
+  | multi_step' : forall(x y z : X),
+                    multi' R x y ->
+                    R y z ->
+                    multi' R x z.
+
+Theorem multi_R' : forall(X : Type) (R : relation X) (x y : X),
+    R x y -> (multi' R) x y.
 Proof.
-  intros.
-  apply multi_step with c'. trivial.
-  apply multi_step with c''; trivial.
-  apply multi_refl.
+  intros X R x y H.
+  apply multi_step' with x; trivial.
+  apply multi_refl'.
 Qed.
 
-Lemma multi_trans_l : forall (X : Type) (R : relation X) (c c' c'' : X), multi R c c' -> R c' c'' -> multi R c c''.
+Theorem multi_trans' :
+  forall(X : Type) (R : relation X) (x y z : X),
+      multi' R x y ->
+      multi' R y z ->
+      multi' R x z.
 Proof.
-  intros X R c c' c'' mS S.
-  induction mS.
-  - apply multi_step with (z:=c'') in S; trivial.
-    apply multi_refl.
-  - apply multi_step with y; trivial.
-    apply IHmS; trivial.
+  intros X R x y z G H.
+  induction H.
+  - assumption.
+  - apply multi_step' with y; trivial.
+    apply IHmulti'. assumption.
 Qed.
 
-Lemma multi_trans_r : forall (X : Type) (R : relation X) (c c' c'' : X), R c c' -> multi R c' c'' -> multi R c c''.
-Proof.
-  intros.
-  apply multi_step with c'; trivial.
-Qed.
 
+Theorem multi_multi' : forall (X:Type) (x y : X) (R :relation X),
+  multi R x y <-> multi' R x y.
+Proof.
+  intros; split.
+  - induction 1.
+    * apply multi_refl'.
+    * apply multi_R' in H.
+      apply multi_trans' with y; trivial.
+  - induction 1.
+    * apply multi_refl.
+    * apply multi_R in H0.
+      apply multi_trans with y; trivial.
+Qed.
 
 
 
 (** ##############################################################################
 DEFINITIONS 
 ################################################################################*)
-
-
 Section RoadContext.
 
-Record car_st := {
-  c_x : Q;
-  c_v : Q;
-  c_a : Q;
-  c_l : Q;
-  c_lane : nat;
+
+(*
+  Kinematic State (of an object)
+*)
+Record k_st := {
+  k_x : Q;
+  k_v : Q;
+  k_l : Q;
+  k_lane : nat; (* TODO: generalize to lateral posision *)
 }.
 
-Definition eq_car_st (c c' :car_st) :=
-  (c_x c) == (c_x c') /\
-  (c_v c) == (c_v c') /\
-  (c_a c) == (c_a c') /\
-  (c_l c) == (c_l c') /\
-  (c_lane c) = (c_lane c').
 
+(* 
+  Car State 
+*)
+Record car := {
+  (* Instantaneous physical state of the car *)
+  c_st : k_st;
+
+  (*
+    Acceleration decision making relation.
+    This predicate will be true iff the car is
+    following the rules of the road given an
+    acceleration and an sensor observation.
+  *)
+  c_acc_ai : k_st -> option k_st -> Q -> Prop;
+}.
+
+
+(*
+  Definitions of kinematic state equivalence
+*)
+Definition eq_k_st (k k' : k_st) :=
+  (k_x k) == (k_x k') /\
+  (k_v k) == (k_v k') /\
+  (k_l k) == (k_l k') /\
+  (k_lane k) = (k_lane k').
+Lemma eq_k_st_refl k : eq_k_st k k.
+Proof. unfold eq_k_st. intuition. Qed.
+Lemma eq_k_st_sym k k' : eq_k_st k k' -> eq_k_st k' k.
+Proof. unfold eq_k_st. intuition. Qed.
+Lemma eq_k_st_trans k k' k'' : eq_k_st k k' -> eq_k_st k' k'' -> eq_k_st k k''.
+Proof. 
+  unfold eq_k_st.
+  intros (Hx & Hv & Hl & Hln).
+  rewrite Hx,Hv,Hl,Hln; trivial.
+Qed.
+Global Instance eq_k_st_equiv : Equivalence eq_k_st.
+Proof.
+  split; hnf.
+  apply eq_k_st_refl.
+  apply eq_k_st_sym.
+  apply eq_k_st_trans.
+Qed.
+Definition eq_k_st_opt (a b : option k_st) := 
+  match a,b with
+  | Some a', Some b' => eq_k_st a' b'
+  | Some _, None => False
+  | None, Some _ => False
+  | None, None => True
+  end.
+Global Instance some_k_st_morph : Proper(eq_k_st ==> eq_k_st_opt) (Some).
+Proof. hnf; intros. unfold eq_k_st_opt; trivial. Qed.
+
+
+(*
+  Definition of car state equivalence
+*)
+Definition eq_car_st (c c' : car) := eq_k_st (c_st c) (c_st c') /\ (c_acc_ai c = c_acc_ai c'). 
 Lemma eq_car_st_refl c : eq_car_st c c.
-Proof. unfold eq_car_st. intuition. Qed.
-
+Proof. unfold eq_car_st,eq_k_st. intuition. Qed.
 Lemma eq_car_st_sym c c' : eq_car_st c c' -> eq_car_st c' c.
-Proof. unfold eq_car_st. intuition. Qed.
-
+Proof. unfold eq_car_st,eq_k_st. intuition. Qed.
 Lemma eq_car_st_trans c c' c'' : eq_car_st c c' -> eq_car_st c' c'' -> eq_car_st c c''.
 Proof. 
-  unfold eq_car_st. intuition.
-  - now (rewrite H1).
-  - now (rewrite H0).
-  - now (rewrite H3).
-  - now (rewrite H5).
+  intros * (K0 & A0) (K1 & A1).
+  unfold eq_car_st; split.
+  - apply eq_k_st_trans with (k':=c_st c'); trivial.
+  - rewrite A0,A1; trivial.
 Qed.
-
 Global Instance eq_car_st_equiv : Equivalence eq_car_st.
 Proof.
   split; hnf.
@@ -660,22 +701,23 @@ Proof.
   apply eq_car_st_trans.
 Qed.
 
-Definition eq_car_st_p (c c' : car_st*car_st) := 
-  (eq_car_st (fst c) (fst c')) /\ (eq_car_st (snd c) (snd c')).
 
+
+(* 
+  Definition of car state pair equivalence
+*)
+Definition eq_car_st_p (c c' : car*car) := 
+  (eq_car_st (fst c) (fst c')) /\ (eq_car_st (snd c) (snd c')).
 Lemma eq_car_st_p_refl c : eq_car_st_p c c.
 Proof. unfold eq_car_st_p. intuition. Qed.
-
 Lemma eq_car_st_p_sym c c' : eq_car_st_p c c' -> eq_car_st_p c' c.
 Proof. unfold eq_car_st_p. intuition. Qed.
-
 Lemma eq_car_st_p_trans c c' c'' : eq_car_st_p c c' -> eq_car_st_p c' c'' -> eq_car_st_p c c''.
 Proof.
   unfold eq_car_st_p. intuition.
   - now (rewrite H1).
   - now (rewrite H2).
 Qed.
-
 Global Instance eq_car_st_p_equiv : Equivalence eq_car_st_p.
 Proof.
   split; hnf.
@@ -685,123 +727,65 @@ Proof.
 Qed.
 
 
-
-Definition non_acc_equ_state (c1 c2 : car_st) := 
-  (c_x c1 == c_x c2) /\
-  (c_v c1 == c_v c2) /\
-  (c_l c1 == c_l c2) /\
-  (c_lane c1 = c_lane c2).
-
-Definition acc_choice (c : car_st) (a : Q) := (Build_car_st (c_x c) (c_v c) a (c_l c) (c_lane c)).
-Definition acc_choice_p_snd (c : car_st*car_st) (a : Q) :=
-  ((fst c), (Build_car_st (c_x (snd c)) (c_v (snd c)) a (c_l (snd c)) (c_lane (snd c)))).
-
-
+(*
+  Scenario Constants
+*)
 Variables dt a_max a_min a_br_req : Q.
-
 Hypothesis PosT : dt > 0.
 Hypothesis BrakeReq : a_br_req < 0.
 Hypothesis BrakeMax : a_min <= a_br_req.
 Hypothesis AccMax : a_max > 0.
-Hypothesis PosLen: forall c:car_st, 0 < c_l c.
-
-Definition c_rear_x (c : car_st) := (c_x c) - (c_l c).
-
-Definition same_lane (c1 c2 : car_st) := (c_lane c1 = c_lane c2).
-Definition same_lane_p (c : car_st*car_st) := (c_lane (fst c) = c_lane (snd c)).
-Definition front (c : car_st*car_st) := fst c.
-Definition rear (c : car_st*car_st) := snd c.
-SearchAbout (Qmax).
-
-Definition wont_stop (c: car_st) :=
-  0 <= c_v c + c_a c * dt /\
-  c_x c <= c_x c + c_v c * dt + c_a c * (dt * dt) / (2 # 1).
-
-Definition step (c c' : car_st) :=
-  (* Single lane (for now) *)
-  (same_lane c c') /\
-  (* Constant/Positive length *)
-  (c_l c == c_l c') /\
-  (* Normal driving *)
-  (wont_stop c -> 
-    (* Kinematics *)
-    (c_x c' == (c_x c) + (c_v c)*dt + ((c_a c)*(dt^2)/(2#1))) /\ 
-    (c_v c' == (c_v c) + (c_a c)*dt)) /\
-  (* No reverse driving *)
-  (~ wont_stop c -> 
-    (c_x c' == c_x c) /\ 
-    (c_v c' == 0)).
-
-Definition const_acc_step (c c' : car_st) := step c c' /\ (c_a c == c_a c').
-Definition const_acc_forward_step (c c' : car_st) := const_acc_step c c' /\ wont_stop c.
-
-Definition collision (c1 : car_st) (c2 : car_st) :=
-  (same_lane c1 c2) /\
-  ((c_x c1 >= c_rear_x c2) /\ (c_x c1 <= c_x c2) \/
-   (c_x c2 >= c_rear_x c1) /\ (c_x c2 <= c_x c1)).
-
-Definition collision_free_step (c1 c1' c2 c2' : car_st) :=
-  ~(collision c1 c2) /\ (same_lane c1 c2) /\
-  (step c1 c1') /\ (step c2 c2') /\
-  ~(collision c1' c2') /\
-  (c_x c1 < c_x c2 -> c_x c1' < c_x c2') /\ (* Relative orderings must be the same, no instantaneous passing *)
-  (c_x c2 < c_x c1 -> c_x c2' < c_x c1').
-Definition collision_free_step_p (c c' : car_st*car_st) := collision_free_step (fst c) (fst c') (snd c) (snd c').
+Hypothesis PosLen: forall k:k_st, 0 < k_l k.
 
 
-Definition max_stopping_dist (c : car_st) := -((c_v c + a_max*dt)^2)/((2#1)*a_br_req).
-Definition min_stopping_dist (c : car_st) := -((c_v c)^2)/((2#1)*a_min).
+(*
+  Record morphisms and helpers
+*)
+Global Instance k_x_morph : Proper (eq_k_st ==> Qeq) (k_x).
+Proof. hnf; intros. unfold eq_k_st in *. intuition. Qed.
+Global Instance k_v_morph : Proper (eq_k_st ==> Qeq) (k_v).
+Proof. hnf; intros. unfold eq_k_st in *. intuition. Qed.
+Global Instance k_l_morph : Proper (eq_k_st ==> Qeq) (k_l).
+Proof. hnf; intros. unfold eq_k_st in *. intuition. Qed.
+Global Instance k_lane_morph : Proper (eq_k_st ==> eq_nat) (k_lane).
+Proof. hnf; intros. unfold eq_k_st in *. intuition. Qed.
 
-Definition min_max_bound_p (c : car_st*car_st) := a_min <= c_a (fst c) <= a_max /\ a_min <= c_a (snd c) <= a_max.
+Global Instance c_st_morph : Proper (eq_car_st ==> eq_k_st) (c_st).
+Proof. hnf; intros. unfold eq_car_st in *. intuition. Qed.
 
-Definition d_min_holds (cf cr : car_st) :=
-  (c_rear_x cf) > (c_x cr) /\ (* This is implied by the following but it's here for convenience *)
-  (c_rear_x cf) - (c_x cr) > ((c_v cr)*dt + a_max*dt^2/(2#1)) /\
-  (c_rear_x cf) - (c_x cr) > 
-  (c_v cr)*dt + a_max*dt^2/(2#1) + max_stopping_dist cr - min_stopping_dist cf.
-Definition d_min_holds_p (c : car_st*car_st) := d_min_holds (front c) (rear c).
+Definition c_x c:= (k_x (c_st c)).
+Definition c_v c:= (k_v (c_st c)).
+Definition c_l c:= (k_l (c_st c)).
 
-Definition d_min_step (c c' : car_st*car_st) :=
-  (~ d_min_holds_p c -> c_a (rear c) <= a_br_req) /\
-  min_max_bound_p c /\ min_max_bound_p c' /\
-  step (front c) (front c') /\  step (rear c) (rear c').
-Definition d_min_step_const_acc_rear (c c' : car_st*car_st) :=
-  (~ d_min_holds_p c -> c_a (rear c) <= a_br_req) /\ step (front c) (front c') /\ const_acc_step (rear c) (rear c').
-Definition d_min_false_step (c c' : car_st*car_st) :=
-  ~ d_min_holds_p c /\ d_min_step c c'.
+Global Instance c_x_morph : Proper (eq_car_st ==> Qeq) (c_x).
+Proof. hnf; intros. unfold c_x. now (rewrite H). Qed.
+Global Instance c_v_morph : Proper (eq_car_st ==> Qeq) (c_v).
+Proof. hnf; intros. unfold c_v. now (rewrite H). Qed.
+Global Instance c_l_morph : Proper (eq_car_st ==> Qeq) (c_l).
+Proof. hnf; intros. unfold c_l. now (rewrite H). Qed.
 
-Definition d_min_step_collision_free (c c' : car_st*car_st) :=
-  d_min_step c c' /\ collision_free_step_p c c'.
+(*
+  Car bumper position, and morphism
+*)
+Definition k_rear_x (k : k_st) := (k_x k) - (k_l k).
+Global Instance k_rear_x_morph : Proper (eq_k_st ==> Qeq) (k_rear_x).
+Proof. hnf; intros. unfold k_rear_x. rewrite H. reflexivity. Qed.
 
-Definition scene_compare_step (c1 c2 : (car_st*car_st)*(car_st*car_st)) :=
-  d_min_step (fst c1) (fst c2) /\ d_min_step (snd c1) (snd c2).
-
-
-(* Definition scenario_within_bounds (c: car_st*car_st) :=
-  state_within_bounds (fst c) /\ state_within_bounds (snd c) /\
-
-  (~ d_min_holds_p c -> c_a (rear c) <= a_br_req). *)
+Definition c_rear_x (c : car) := k_rear_x (c_st c).
+Global Instance c_rear_x_morph : Proper (eq_car_st ==> Qeq) (c_rear_x).
+Proof. hnf; intros. unfold c_rear_x. rewrite H. reflexivity. Qed.
 
 
-
-Lemma same_lane_refl : forall (c : car_st), same_lane c c.
-Proof.
-  intros.
-  unfold same_lane.
-  reflexivity.
-Qed.
-
+(*
+  Lane equivalence
+*)
+Definition same_lane (c1 c2 : car) := (k_lane (c_st c1) = k_lane (c_st c2)).
+Lemma same_lane_refl c : same_lane c c.
+Proof. unfold same_lane. intuition. Qed.
 Lemma same_lane_sym c c' : same_lane c c' -> same_lane c' c.
 Proof. unfold same_lane. intuition. Qed.
-
-Lemma same_lane_trans : forall (c c' c'' : car_st), same_lane c c' -> same_lane c' c'' -> same_lane c c''.
-Proof.
-  intros * L1 L2.
-  unfold same_lane in *.
-  rewrite L1, L2.
-  reflexivity.
-Qed.
-
+Lemma same_lane_trans c c' c'' : same_lane c c' -> same_lane c' c'' -> same_lane c c''.
+Proof. intros. unfold same_lane in *. intuition. Qed.
 Global Instance same_lane_equiv : Equivalence same_lane.
 Proof.
   split; hnf.
@@ -809,90 +793,425 @@ Proof.
   apply same_lane_sym.
   apply same_lane_trans.
 Qed.
+Lemma same_lane_dec : forall (c1 c2 : car), {same_lane c1 c2} + {~same_lane c1 c2}.
+Proof. intros.  unfold same_lane. apply Nat.eq_dec. Qed.
 
 
-Global Instance step_morph : Proper (eq_car_st ==> eq_car_st ==> iff) (step).
+(*
+  Given an observed car in front, this relation is true if c can move to c' according to newtonian kinematics
+  and according to a car's decision making function. This step function assumes that acceleration can be
+  adjusted instantaneously. Future models should take into account jerk to make this more accurate.
+*)
+Definition step (a:Q) (obs : option k_st) (c c' : car) :=
+  (* Kinematics *)
+  c_x c' == (c_x c) + (c_v c)*dt + (a*dt^2)/(2#1) /\
+  c_v c' == (c_v c) + a*dt /\
+  (* Decision making function/monitor. Is this "a" valid? *)
+  ((c_acc_ai c) (c_st c) obs a) /\
+  (* Constant length *)
+  c_l c == c_l c' /\
+  (* Single lane (for now) *)
+  (same_lane c c').
+
+
+
+(*
+  Helper definitions for the minimum distance calculations.
+*)
+Definition max_stopping_dist (k : k_st) := -((k_v k + a_max*dt)^2)/((2#1)*a_br_req).
+Definition min_stopping_dist (k : k_st) := -((k_v k)^2)/((2#1)*a_min).
+Definition d_min (kr kf : k_st) :=
+  (k_rear_x kf) > (k_x kr) /\
+  (k_rear_x kf) - (k_x kr) > ((k_v kr)*dt + a_max*dt^2/(2#1)) /\
+  (k_rear_x kf) - (k_x kr) > 
+    (k_v kr)*dt + a_max*dt^2/(2#1) + 
+    max_stopping_dist kr - min_stopping_dist kf. (*TODO ADD CASE FOR STOPPING*)
+Lemma d_min_dec : forall kr kf, {d_min kr kf} + {~ d_min kr kf}.
 Proof.
-  hnf; intros * (X & V & A & L & Ln); hnf; intros * (X0 & V0 & A0 & L0 & Ln0).
-  unfold eq_car_st,step,wont_stop in *.
-  unfold same_lane in *.
-  split; intros S.
-  - rewrite !X,!V,!A,!L,!Ln in S.
-    rewrite !X0,!V0,!L0,!Ln0 in S.
-    trivial.
-  - rewrite <-!X,<-!V,<-!A,<-!L,<-!Ln in S.
-    rewrite <-!X0,<-!V0,<-!L0,<-!Ln0 in S.
-    trivial.
-Qed.
-
-Global Instance fst_car_st_p_morph : Proper (eq_car_st_p ==> eq_car_st) (fst).
-Proof.
-  hnf; intros * E.
-  unfold eq_car_st_p in E.
+  intros.
+  unfold d_min.
+  destruct (Qlt_le_dec 
+    (k_x kr)
+    (k_rear_x kf))
+    as [LT0|LE0];
+  destruct (Qlt_le_dec 
+    (k_v kr * dt + a_max * dt ^ 2 / (2 # 1))
+    (k_rear_x kf - k_x kr ))
+    as [LT1|LE1];
+  destruct (Qlt_le_dec 
+    (k_v kr * dt + a_max * dt ^ 2 / (2 # 1) +
+       max_stopping_dist kr - min_stopping_dist kf)
+    (k_rear_x kf - k_x kr ))
+    as [LT2|LE2];
+  try apply Qle_not_lt in LE0;
+  try apply Qle_not_lt in LE1;
+  try apply Qle_not_lt in LE2;
   intuition.
 Qed.
+Definition d_min_p (p :car*car) := d_min (c_st (snd p)) (c_st (fst p)).
+Lemma d_min_p_dec : forall p, {d_min_p p} + {~d_min_p p}.
+Proof. intros. unfold d_min_p. apply d_min_dec. Qed.
 
-Global Instance snd_car_st_p_morph : Proper (eq_car_st_p ==> eq_car_st) (snd).
+Definition will_stop (k : k_st) (a:Q) := 
+  ((k_v k + a*dt < 0) \/
+  ((k_v k)*dt + (a*dt^2)/(2#1) < 0)).
+Lemma will_stop_dec : forall k a, {will_stop k a} + {~will_stop k a}.
 Proof.
-  hnf; intros * E.
-  unfold eq_car_st_p in E.
-  intuition.
+  intros.
+  unfold will_stop.
+  destruct (Qlt_le_dec (k_v k + a * dt) 0) as [LT0|LE0];
+    destruct (Qlt_le_dec (k_v k * dt + a * dt ^ 2 / (2 # 1)) 0) as [LT1|LE1];
+    try apply Qle_not_lt in LE0;
+    try apply Qle_not_lt in LE1;
+    intuition.
 Qed.
 
-Global Instance c_a_morph : Proper (eq_car_st ==> Qeq) (c_a).
+(*
+  Decision making function based on a minimum distance calculation and assumptions about rules of the road
+*)
+Definition d_min_rules (kr : k_st) (kf : option k_st) (a : Q) :=
+  (* No reverse driving *)
+  0 <= (k_v kr) /\
+  0 <= (k_v kr) + a*dt /\
+  0 <= (k_v kr)*dt + (a*dt^2)/(2#1) /\
+
+  (* Bounded acceleration *)
+  a_min <= a <= a_max /\
+
+  (* Minimum distance violation *)
+  match kf, (will_stop_dec kr a_br_req) with
+    | Some kf', left _  => (~ d_min kr kf') -> (a == (k_v kr)/dt) (* Stop without reversing *)
+    | Some kf', right _ => (~ d_min kr kf') -> (a <= a_br_req) (* Apply minimum braking *)
+    | None, _ => True (* No observed car in front *)
+  end.
+Global Instance d_min_rules_morph : Proper (eq_k_st ==> eq_k_st_opt ==> Qeq ==> iff) (d_min_rules).
 Proof.
-  hnf; intros * (X & V & A & L & Ln).
-  auto.
+  hnf; intros * (X & V & L & Ln); hnf; intros * E0; hnf; intros * E1.
+  unfold d_min_rules,d_min,min_stopping_dist,max_stopping_dist,eq_k_st_opt in *.
+  destruct x0, y0,(will_stop_dec x a_br_req),(will_stop_dec y a_br_req);
+  rewrite ?X,?V,?E0,?E1;
+  try reflexivity;
+  unfold will_stop in *;
+  try rewrite ?V in w; try rewrite ?V in n;
+  contradiction.
 Qed.
 
-Global Instance min_max_bound_p_morph : Proper (eq_car_st_p ==> iff) (min_max_bound_p).
-Proof.
-  hnf; intros * E.
-  unfold min_max_bound_p, eq_car_st_p in *.
-  destruct E as [E0 E1].
-  now (rewrite E0,E1).
-Qed.
+(*
+  Pairwise step following d_min_rules
+*)
+Definition d_min_step (c c' : car*car) := forall a', (exists a,
+  (c_acc_ai (fst c)) = d_min_rules /\
+  (c_acc_ai (snd c)) = d_min_rules /\
+  (c_acc_ai (fst c')) = d_min_rules /\
+  (c_acc_ai (snd c')) = d_min_rules /\
+  (step a (Some (c_st (fst c))) (snd c) (snd c')) /\
+  (step a' None (fst c) (fst c'))).
 
-Global Instance d_min_holds_morph : Proper (eq_car_st ==> eq_car_st ==> iff) (d_min_holds).
-Proof.
-  hnf; intros * (X & V & A & L & Ln); hnf; intros * (X0 & V0 & A0 & L0 & Ln0).
-  unfold eq_car_st,d_min_holds,max_stopping_dist,min_stopping_dist,c_rear_x in *.
-  split; intros S.
-  - rewrite !X,!V,!L in S.
-    rewrite !X0,!V0 in S.
-    trivial.
-  - rewrite <-!X,<-!V,<-!L in S.
-    rewrite <-!X0,<-!V0 in S.
-    trivial.
-Qed.
 
-Global Instance d_min_holds_p_morph : Proper (eq_car_st_p ==> iff) (d_min_holds_p).
-  hnf; intros * (Heq & Heq').
-  unfold eq_car_st_p, d_min_holds_p,rear,front in *.
-  rewrite Heq,Heq'.
-  intuition.
-Qed.
+(*
+  Instantaneous Collision
+*)
+Definition collision (c1 c2 : car) :=
+  (same_lane c1 c2) /\
+  ((c_rear_x c2 <= c_x c1 /\ c_x c1 <= c_x c2) \/
+   (c_rear_x c1 <= c_x c2 /\ c_x c2 <= c_x c1)).
+
+(*
+  Definition of a safe step
+*)
+Definition collision_free_d_min_step (c c' : car*car) :=
+  d_min_step c c' /\
+  (* No initial collision *)
+  (~ collision (fst c) (snd c)) /\
+  (* No final collision *)
+  (~ collision (fst c') (snd c')) /\ 
+  (* Relative orderings must be the same, no instantaneous passing *)
+  (c_x (fst c) < c_x (snd c) -> c_x (fst c') < c_x (snd c')) /\ 
+  (c_x (snd c) < c_x (fst c) -> c_x (snd c') < c_x (fst c')).
+
+(*
+  Brake mode step
+*)
+Definition brake_mode_step (c c' : car*car) :=
+  d_min_step c c' /\ ~(d_min_p c).
+
+Definition collision_free_brake_mode_step (c c' : car*car) :=
+  collision_free_d_min_step c c' /\ ~ d_min_p c.
+
 
 
 Global Instance d_min_step_morph : Proper (eq_car_st_p ==> eq_car_st_p ==> iff) (d_min_step).
 Proof.
-  hnf; intros * E0; hnf; intros * E1.
-  unfold d_min_step,d_min_holds_p,front,rear in *.
-  now (rewrite <-E0,<-E1).
+  hnf; intros * EQ0; hnf; intros * EQ1.
+  assert (eq_car_st_p x y) as EQ0' by auto.
+  assert (eq_car_st_p x0 y0) as EQ1' by auto.
+  unfold eq_car_st_p,eq_car_st,d_min_step,step in EQ0,EQ1|-*.
+  destruct EQ0 as (((XF0 & VF0 & LF0 & NF0) & AF0) & ((XS0 & VS0 & LS0 & NS0) & AS0)).
+  destruct EQ1 as (((XF1 & VF1 & LF1 & NF1) & AF1) & ((XS1 & VS1 & LS1 & NS1) & AS1)).
+  unfold c_x,c_v,c_l,same_lane in *.
+  split; intros; destruct H with a';
+  exists x1;
+  [ rewrite <-!XS0,<-!VS0,<-!LS0,<-!NS0,<-AS0;
+    rewrite <-!XF0,<-!VF0,<-!LF0,<-!NF0,<-AF0;
+    rewrite <-!XS1,<-!VS1,<-!LS1,<-!NS1,<-AS1;
+    rewrite <-!XF1,<-!VF1,<-!LF1,<-!NF1,<-AF1
+    |
+    rewrite !XS0,!VS0,!LS0,!NS0,AS0;
+    rewrite !XF0,!VF0,!LF0,!NF0,AF0;
+    rewrite !XS1,!VS1,!LS1,!NS1,AS1;
+    rewrite !XF1,!VF1,!LF1,!NF1,AF1
+  ];
+  destruct H0 as (D0 & D1 & D2 & D3 & H0);
+  rewrite D0,D1;
+  rewrite D0,D1 in H0;
+  destruct EQ0' as [EQF0 EQS0];
+  destruct EQ1' as [EQF1 EQS1];
+  unfold eq_car_st_p in *;
+  intuition.
+  - now (rewrite <-EQS0,<-EQF0).
+  - unfold d_min_rules in *.
+    intuition; rewrite <-EQF0; trivial.
+  - now (rewrite EQS0,EQF0).
+  - unfold d_min_rules in *.
+    intuition; rewrite EQF0; trivial.
 Qed.
 
 
+
+Definition init_conditions (p : car*car) := d_min_p p.
+Lemma init_conditions_dec : forall p, {init_conditions p} + {~init_conditions p}.
+Proof.
+  intros.
+  unfold init_conditions.
+  apply d_min_p_dec.
+Qed.
+
+
+Definition d_min_invariant (p p' : car*car) :=
+  ((max_stopping_dist (c_st (snd p)) - min_stopping_dist (c_st (fst p))) < (c_rear_x (fst p') - c_x (snd p'))).
 
 (** ##############################################################################
 MOTION THEOREMS 
 ################################################################################*)
 
-Lemma no_reverse_driving : forall (c : car_st) (c' : car_st), (step c c') -> (c_x c <= c_x c').
+
+Lemma k_rear_lt : forall (k : k_st), k_rear_x k < k_x k.
 Proof.
   intros.
-  unfold step in H.
+  unfold k_rear_x.
+  apply Qplus_lt_l with (z:=-k_x k).
+  rewrite !Qplus_neg,Qplus_comm,!Qplus_assoc,Qplus_opp_l,Qplus_opp_r,Qplus_0_l.
+  assert (0 < k_l k) as H by apply PosLen.
+  now (apply Qlt_neg_lt).
+Qed.
+
+Lemma c_rear_lt : forall c : car, c_rear_x c < c_x c.
+Proof. intros. unfold c_rear_x, c_x. apply k_rear_lt. Qed.
+
+Lemma no_reverse_driving : forall (c c' : car) (a : Q) (obs : option k_st),
+  (step a obs c c') -> (c_acc_ai c) = d_min_rules -> (c_x c <= c_x c').
+Proof.
+  intros * S AI.
+  destruct S as (X & V & S).
+  rewrite AI in S.
+  unfold d_min_rules in S.
+  rewrite X.
+  apply Qle_minus_iff.
+  rewrite <-!Qplus_assoc.
+  plus_minus.
+  rewrite Qplus_opp_r,Qplus_0_r.
+  unfold c_v.
   intuition.
 Qed.
+
+Lemma d_min_step_no_reverse : forall (p p' : car*car),
+  d_min_step p p' -> (c_x (snd p) <= c_x (snd p') /\ c_x (fst p) <= c_x (fst p')).
+Proof.
+  intros * H.
+  unfold d_min_step in *.
+  assert(Q) as a'; auto.
+  destruct H with a' as [a (A0 & A1 & A2 & A3 & S0 & S1)]; clear H.
+  apply no_reverse_driving in S0; trivial.
+  apply no_reverse_driving in S1; trivial.
+  auto.
+Qed.
+
+
+Lemma multi_collision_free_d_min_step_weak : forall (p p': car*car),
+  multi collision_free_d_min_step p p' -> multi d_min_step p p'.
+Proof.
+  intros * S.
+  induction S.
+  - apply multi_refl.
+  - destruct H.
+    apply multi_step with (z0:=z) in H; trivial.
+Qed.
+
+Lemma multi_collision_free_brake_mode_step_weak1 : forall (p p' : car*car),
+  multi collision_free_brake_mode_step p p' -> multi brake_mode_step p p'.
+Proof.
+  intros * S.
+  induction S.
+  - apply multi_refl.
+  - destruct H as ((? & ?) & ?).
+    apply multi_step with y; unfold brake_mode_step; auto.
+Qed.
+
+Lemma multi_collision_free_brake_mode_step_weak2 : forall (p p' : car*car),
+  multi collision_free_brake_mode_step p p' -> multi collision_free_d_min_step p p'.
+Proof.
+  intros * S.
+  induction S.
+  - apply multi_refl.
+  - destruct H.
+    apply multi_step with y; auto.
+Qed.
+
+
+Lemma d_min_single_safety : forall (p p' : car*car),
+  d_min_p p -> d_min_step p p' -> collision_free_d_min_step p p'.
+Proof.
+Admitted.
+
+Lemma d_min_transition_existence : forall (p p' : car*car),
+  d_min_p p -> ~ d_min_p p' -> multi collision_free_d_min_step p p' ->
+  (exists i i', 
+    multi collision_free_d_min_step p i /\
+    collision_free_d_min_step i i' /\
+    d_min_p i /\
+    multi collision_free_brake_mode_step i' p'). (* TODO: need to be brake mode steps? *)
+Proof.
+Admitted.
+
+Lemma d_min_transition_invariant : forall (p p' : car*car),
+  d_min_p p -> collision_free_d_min_step p p' -> ~ d_min_p p' -> d_min_invariant p p'.
+Proof.
+Admitted.
+
+
+Lemma d_min_safe_brake : forall (p p' p'' : car*car),
+  collision_free_d_min_step p p' ->  multi brake_mode_step p' p'' ->
+  d_min_invariant p p' -> c_x (snd p'') < c_rear_x (fst p'').
+Proof.
+  intros * DS MS I.
+Admitted.
+
+
+Lemma d_min_no_collision : forall (p : car*car), d_min_p p -> ~collision (fst p) (snd p).
+Proof.
+  unfold not.
+  intros * H C.
+  unfold d_min_p,d_min,collision,c_rear_x,c_x in *.
+  destruct H as (H0 & H1 & H2).
+  destruct C as (L &  [[E0 E1] | [E0 E1]]).
+  - apply Qlt_trans with (z:=k_x (c_st (fst p))) in H0.
+    * apply Qlt_not_le in H0. contradiction.
+    * apply k_rear_lt.
+  - apply Qlt_not_le in H0. contradiction. 
+Qed.
+
+Lemma d_min_intermediate_collision_free : forall (p p' : car*car),
+  d_min_p p -> multi collision_free_d_min_step p p' -> ~collision (fst p') (snd p').
+Proof.
+  intros * Init S.
+  rewrite multi_multi' in S.
+  induction S.
+  - now (apply d_min_no_collision).
+  - unfold collision_free_d_min_step in H.
+    intuition.
+Qed.
+
+Lemma disjoint_no_collision : forall p : car*car, 
+  c_x (snd p) < c_rear_x (fst p) -> ~ collision (fst p) (snd p).
+Proof. 
+  intros.
+  unfold collision,not.
+  intros (Ln & [[E0 E1] | [E0 E1]]).
+  - apply Qle_lt_trans with (z:=c_rear_x (fst p)) in E1; trivial.
+    apply Qlt_not_lt in E1.
+    assert (c_rear_x (fst p) < c_x (fst p)) by apply c_rear_lt.
+    contradiction.
+  - apply Qlt_le_trans with (z:=c_x (snd p)) in H; trivial.
+    assert (~ c_x (snd p) < c_x (snd p)) by apply Qlt_irrefl.
+    contradiction.
+Qed.
+
+
+
+Theorem safety : forall (p p' p'' : car*car),
+  init_conditions p -> multi collision_free_d_min_step p p' -> d_min_step p' p'' -> collision_free_d_min_step p' p''.
+Proof.
+  intros * Init MS0 DS1.
+  
+  (* Either d_min holds or it doesn't at p' *)
+  destruct (d_min_p_dec p') as [C0|C0].
+  - now (apply d_min_single_safety with (p':=p'') in C0).
+  - unfold init_conditions in *.
+    (* There exists a point when d_min started to not hold *)
+    apply d_min_transition_existence with (p':=p') in Init as T0; trivial.
+    destruct T0 as [i [i' (MSI0 & SI & DI & MSI1)]].
+
+    (* The distance between the two cars at the transition point is > d_min. *)
+    apply d_min_transition_invariant with (p':=i') in SI as Inv; trivial.
+    * assert (multi brake_mode_step i' p'') as MSI2.
+      {
+        apply multi_collision_free_brake_mode_step_weak1 in MSI1.
+        apply multi_trans with (y:=p'); trivial.
+        assert (brake_mode_step p' p'').
+        {
+          unfold brake_mode_step. intuition.
+        }
+        now (apply multi_R).
+      }
+      (* The hard lemma, show that there is still space if a car has been braking *)
+      apply d_min_safe_brake with(p'':=p'') in SI as Dp'; trivial.
+      unfold collision_free_d_min_step.
+      
+      split; auto.
+      split. (* The cars are not colliding at p' *)
+      {
+        assert (multi collision_free_d_min_step i p') as MSI3.
+        {
+          apply multi_collision_free_brake_mode_step_weak2 in MSI1.
+          apply multi_step with (z:=p') in SI; trivial.
+        }
+        apply d_min_intermediate_collision_free with (p':=p') in DI as ?; trivial.
+      }
+      
+      split. (* The cars are not colliding at p'' *)
+      {
+        apply disjoint_no_collision; trivial.
+      }
+
+      split.
+      {
+        intros C1.
+        apply d_min_step_no_reverse in DS1 as [E0 E1].
+
+    * 
+
+    
+Qed.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 Lemma multi_no_reverse_driving : forall (c c' : car_st), (multi step c c') -> (c_x c <= c_x c').
 Proof.
