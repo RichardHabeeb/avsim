@@ -2,12 +2,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
-
-#include <util.h>
-#include <config.h>
-#include <car.h>
-
 #include <stdio.h>
+
+#include "src/common/util.h"
+#include "src/common/config.h"
+#include "src/vehicles/simple_car.h"
+
 
 
 static void apply_dynamics(car_t *car) {

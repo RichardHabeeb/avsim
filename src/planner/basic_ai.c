@@ -2,10 +2,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include <config.h>
-#include <util.h>
-#include <basic_ai.h>
-#include <car.h>
+#include "src/common/config.h"
+#include "src/common/util.h"
+#include "src/planner/basic_ai.h"
+#include "src/vehicles/simple_car.h"
 
 
 

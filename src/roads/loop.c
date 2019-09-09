@@ -3,9 +3,9 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include <util.h>
-#include <car.h>
-#include <road.h>
+#include "src/common/util.h"
+#include "src/vehicles/simple_car.h"
+#include "src/roads/loop.h"
 
 
 static void correct_car_pos(road_t *road, car_t *car) {

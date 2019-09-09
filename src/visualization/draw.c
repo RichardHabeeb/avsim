@@ -3,12 +3,12 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL2_gfxPrimitives.h>
 
-#include <util.h>
-#include <sim.h>
-#include <config.h>
-#include <draw.h>
-#include <road.h>
-#include <car.h>
+#include "src/common/util.h"
+#include "src/common/config.h"
+#include "src/simulator/sim.h"
+#include "src/visualization/draw.h"
+#include "src/roads/loop.h"
+#include "src/vehicles/simple_car.h"
 
 void drawcircle(vis_t *vis, int x0, int y0, int radius)
 {

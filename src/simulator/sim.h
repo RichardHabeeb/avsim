@@ -3,8 +3,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include <road.h>
-#include <car.h>
+#include "src/roads/loop.h"
+#include "src/vehicles/simple_car.h"
 
 
 typedef enum {

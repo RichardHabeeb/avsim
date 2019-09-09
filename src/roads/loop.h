@@ -1,7 +1,8 @@
 #pragma once
 #include <stdbool.h>
 #include <stddef.h>
-#include <car.h>
+
+#include "src/vehicles/simple_car.h"
 
 
 typedef struct path path_t;

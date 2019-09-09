@@ -6,13 +6,12 @@
 #include <string.h>
 #include <SDL2/SDL.h>
 
-#include <config.h>
-#include <sim.h>
-#include <draw.h>
-#include <road.h>
-#include <car.h>
-
-#include <basic_ai.h>
+#include "src/common/config.h"
+#include "src/simulator/sim.h"
+#include "src/visualization/draw.h"
+#include "src/roads/loop.h"
+#include "src/vehicles/simple_car.h"
+#include "src/planner/basic_ai.h"
 
 static sim_action_t handle_events(sim_t *sim, vis_t *vis) {
     static SDL_Point prev_mouse_pos; 

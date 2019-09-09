@@ -1,8 +1,8 @@
 #pragma once
 
-#include <sim.h>
-#include <road.h>
 #include <SDL2/SDL.h>
+#include "src/simulator/sim.h"
+#include "src/roads/loop.h"
 
 typedef struct vis {
     SDL_Window *window;
