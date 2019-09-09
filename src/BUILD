@@ -1,11 +1,11 @@
 cc_binary(
 	name = "avsim",
 	srcs = [
-		"main.c",
+		"main.cpp",
 	],
 	deps = [
 		"//src/common:common",
-		"//src/visualization:sdl_vis",
+		"//src/visualization:vis2d",
 		"//src/simulator:sim",
 		"//src/roads:roads",
 		"//src/vehicles:simple_car",

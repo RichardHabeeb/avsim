@@ -1,12 +1,13 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-	name = "sdl_vis",
+	name = "vis2d",
 	srcs = [
-		"draw.c",
+		"vis2d.cpp",
 	],
 	hdrs = [
-		"draw.h",
+		"visualization.h",
+		"vis2d.h",
 	],
 	deps = [
 		"//src/common:common",
