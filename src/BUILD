@@ -6,7 +6,7 @@ cc_binary(
 	deps = [
 		"//src/common:common",
 		"//src/visualization:vis2d",
-		"//src/simulator:sim",
+		"//src/simulation:sim",
 		"//src/roads:roads",
 		"//src/vehicles:simple_car",
 		"//src/planner:basic_planner",

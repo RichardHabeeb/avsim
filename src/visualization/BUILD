@@ -13,7 +13,7 @@ cc_library(
 		"//src/common:common",
 		"//src/roads:roads",
 		"//src/vehicles:simple_car",
-		"//src/simulator:sim",
+		"//src/simulation:sim",
 	],
 	linkopts = [
 		"-lSDL2",

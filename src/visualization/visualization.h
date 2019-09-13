@@ -1,7 +1,4 @@
-
-extern "C" {
-#include "src/simulator/sim.h"
-}
+#include "src/simulation/sim.h"
 
 namespace avsim {
 namespace visualization {
@@ -14,8 +11,8 @@ public:
 	};
 
 	~Visualization() {};
-	virtual Error setup(sim_t *sim)  = 0;
-	virtual Error draw(sim_t *sim) = 0;
+	virtual Error setup(simulation::Sim &sim)  = 0;
+	virtual Error draw(simulation::Sim &sim) = 0;
 };
 
 } /* visualization */

@@ -6,7 +6,7 @@
 #include "src/visualization/visualization.h"
 
 extern "C" {
-#include "src/simulator/sim.h"
+#include "src/simulation/sim.h"
 #include "src/roads/loop.h"
 }
 
@@ -18,9 +18,9 @@ public:
 	Vis2d() = default;
 	~Vis2d();
 
-	Error setup(sim_t *sim);
-	Error draw(sim_t *sim);
-	Error mapPointToDrawnObject(sim_t *sim, SDL_Point, car_t **, road_t **);
+	Error setup(simulation::Sim &sim);
+	Error draw(simulation::Sim &sim);
+	Error mapPointToDrawnObject(simulation::Sim &sim, SDL_Point, car_t **, road_t **);
 
 	void setScale(SDL_Point s);
 	void setRotation(uint16_t r);
@@ -35,7 +35,7 @@ public:
 private:
 
     Error drawRoad(
-        road_t *road,
+        road_t &road,
         uint32_t road_width_px,
         uint32_t road_height_px);
 

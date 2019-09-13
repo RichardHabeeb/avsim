@@ -3,11 +3,11 @@
 #include <SDL2/SDL2_gfxPrimitives.h>
 
 #include "src/visualization/vis2d.h"
+#include "src/simulation/sim.h"
 
 extern "C" {
 #include "src/common/util.h"
 #include "src/common/config.h"
-#include "src/simulator/sim.h"
 #include "src/roads/loop.h"
 #include "src/vehicles/simple_car.h"
 }
@@ -50,7 +50,7 @@ SDL_Point Vis2d::getTranslation() {
 }
 
 
-Vis2d::Error Vis2d::setup(sim_t *sim) {
+Vis2d::Error Vis2d::setup(simulation::Sim &sim) {
     if(SDL_Init(SDL_INIT_VIDEO) < 0) {
         return InternalError;
     }
@@ -85,20 +85,20 @@ Vis2d::Error Vis2d::setup(sim_t *sim) {
     view.w = CFG_WINDOW_SIZE_X;
     view.h = CFG_WINDOW_SIZE_Y;
     
-    road_tex.resize(sim->model.num_roads);
-    road_dim.resize(sim->model.num_roads);
+    road_tex.resize(sim.numRoads());
+    road_dim.resize(sim.numRoads());
 
-    if(sim->model.num_roads == 1) {
-        road_t *road = &sim->model.roads[0];
+    if(sim.numRoads() == 1) {
+        road_t &road = *sim.roadsBegin();
         SDL_Rect &dim = road_dim[0];
 
         dim.w = CFG_WORLD_SIZE_X*14/16;
 
         /* fix truncation problems TODO: scale better */
-        uint32_t px_per_m = dim.w / (road->length / CFG_SPACE_SCALE);
+        uint32_t px_per_m = dim.w / (road.length / CFG_SPACE_SCALE);
 
-        dim.w = road->length*px_per_m/CFG_SPACE_SCALE; 
-        dim.h = CFG_SINGLE_LANE_HEIGHT_M*px_per_m*road->num_lanes;
+        dim.w = road.length*px_per_m/CFG_SPACE_SCALE; 
+        dim.h = CFG_SINGLE_LANE_HEIGHT_M*px_per_m*road.num_lanes;
         dim.x = CFG_WORLD_SIZE_X/2 - dim.w/2;
         dim.y = CFG_WORLD_SIZE_Y/2 - dim.h/2; 
 
@@ -121,35 +121,46 @@ Vis2d::~Vis2d() {
     SDL_Quit();
 }
 
-Vis2d::Error Vis2d::mapPointToDrawnObject(sim_t *sim, SDL_Point p, car_t **car_ret, road_t **road_ret) {
+Vis2d::Error Vis2d::mapPointToDrawnObject(
+    simulation::Sim &sim,
+    SDL_Point p,
+    car_t **car_ret,
+    road_t **road_ret)
+{
     /* translate to world coords */
     SDL_Point wp = getScale();
     wp.x = view.x + 2*p.x*wp.x/DRAW_SCALE_MAX;
     wp.y = view.y + 2*p.y*wp.y/DRAW_SCALE_MAX;
 
 
-    for(uint32_t i = 0; i < sim->model.num_roads; i++) {
-        road_t *road = &sim->model.roads[i];
-        SDL_Rect &dim = road_dim[i];
+    for(std::pair<simulation::Sim::RoadsIterator, std::vector<SDL_Rect>::iterator>
+            it(sim.roadsBegin(), road_dim.begin()); 
+        it.first != sim.roadsEnd() && 
+        it.second != road_dim.end();
+        ++it.first, ++it.second)
+    {
+        road_t &road = *it.first;
+        SDL_Rect &dim = *it.second;
 
         /* Check if point is in road */
-        if(wp.x >= dim.x && wp.x <= dim.x+dim.w && wp.y >= dim.y && wp.y <= dim.y+dim.h) {
-
+        if(wp.x >= dim.x && wp.x <= dim.x+dim.w &&
+           wp.y >= dim.y && wp.y <= dim.y+dim.h)
+        {
             if(road_ret != NULL) {
-                *road_ret = road;
+                *road_ret = &road;
             }
 
             if(car_ret == NULL) continue;
 
             /* translate to road coords */
-            uint32_t pos = road->length*(wp.x - dim.x)/dim.w;
-            uint32_t lane = road->num_lanes*(wp.y-dim.y)/dim.h;
+            uint32_t pos = road.length*(wp.x - dim.x)/dim.w;
+            uint32_t lane = road.num_lanes*(wp.y-dim.y)/dim.h;
 
-            for(uint32_t j = 0; j < road->num_cars; j++) {
-                car_t * car = &road->cars[j];
+            for(uint32_t j = 0; j < road.num_cars; j++) {
+                car_t &car = road.cars[j];
 
-                if(car->lane == lane && pos <= car->pos && pos >= car->pos-car->length) {
-                    *car_ret = car;
+                if(car.lane == lane && pos <= car.pos && pos >= car.pos-car.length) {
+                    *car_ret = &car;
                 }
             }
         }
@@ -160,14 +171,14 @@ Vis2d::Error Vis2d::mapPointToDrawnObject(sim_t *sim, SDL_Point p, car_t **car_r
 
 
 Vis2d::Error Vis2d::drawRoad(
-    road_t *road,
+    road_t &road,
     uint32_t road_width_px,
     uint32_t road_height_px) 
 {
     uint32_t i,j;
 
     /* Assumes that widths and heights have been scaled so that px_per_m is an int w/o truncation */
-    uint32_t px_per_m = road_width_px / (road->length / CFG_SPACE_SCALE);
+    uint32_t px_per_m = road_width_px / (road.length / CFG_SPACE_SCALE);
 
     uint32_t lane_height_px = CFG_SINGLE_LANE_HEIGHT_M*px_per_m;
 
@@ -181,8 +192,8 @@ Vis2d::Error Vis2d::drawRoad(
     uint32_t stripe_height_px = stripe_length_px/16;
     stripe_length_px = stripe_length_px > 0 ? stripe_length_px : 1;
     stripe_height_px = stripe_height_px > 0 ? stripe_height_px : 1;
-    if(road->num_lanes > 1) {
-        for(i = 1; i < road->num_lanes; i++) {
+    if(road.num_lanes > 1) {
+        for(i = 1; i < road.num_lanes; i++) {
             for(j = 0; j < road_width_px; j+=4*stripe_length_px) {
                 SDL_Rect lane_stripe = {
                     j,
@@ -196,13 +207,13 @@ Vis2d::Error Vis2d::drawRoad(
     }
 
     /* draw sensor views */
-    for(i = 0; i < road->num_cars; i++) {
-        car_t *car = &road->cars[i];
+    for(i = 0; i < road.num_cars; i++) {
+        car_t *car = &road.cars[i];
 
         if(!car->selected) continue;
 
         sensor_view_t view;
-        build_sensor_view(car, road, &view);
+        build_sensor_view(car, &road, &view);
         SDL_SetRenderDrawColor(rend, 0x00, 0x00, 0xFF, 0x20);
 
         uint32_t view_top = view.left*lane_height_px;
@@ -229,7 +240,7 @@ Vis2d::Error Vis2d::drawRoad(
             view_rect = (SDL_Rect){
                 view.back*px_per_m/CFG_SPACE_SCALE,
                 view_top,
-                (road->length-view.back)*px_per_m/CFG_SPACE_SCALE,
+                (road.length-view.back)*px_per_m/CFG_SPACE_SCALE,
                 view_height
             };
             SDL_RenderFillRect(rend, &view_rect);
@@ -238,8 +249,8 @@ Vis2d::Error Vis2d::drawRoad(
 
     /* Draw cars */
     uint32_t car_height_px = CFG_CAR_WIDTH_M*px_per_m;
-    for(i = 0; i < road->num_cars; i++) {
-        car_t *car = &road->cars[i];
+    for(i = 0; i < road.num_cars; i++) {
+        car_t *car = &road.cars[i];
         
         SDL_SetRenderDrawColor(rend, 0xFF - 0x80*car->spd/car->top_spd, (0xFF*car->spd/car->top_spd), 0x00, 0xFF);
 
@@ -260,7 +271,7 @@ Vis2d::Error Vis2d::drawRoad(
             };
             SDL_RenderFillRect(rend, &car_rect);
         } else {
-            uint32_t rear_pos = sub_mod(car->pos, car->length, road->length);
+            uint32_t rear_pos = sub_mod(car->pos, car->length, road.length);
 
             SDL_Rect car_rect = {
                 0,
@@ -283,16 +294,16 @@ Vis2d::Error Vis2d::drawRoad(
 }
 
 
-Vis2d::Error Vis2d::draw(sim_t *sim) {
+Vis2d::Error Vis2d::draw(simulation::Sim &sim) {
     /* Render the world BG */
     SDL_SetRenderTarget(rend, world_tex);
     SDL_SetRenderDrawColor(rend, 0xAA, 0xAA, 0xAA, 0xFF);
     SDL_RenderClear(rend);
 
     /* Render roads into the world */
-    if(sim->model.num_roads == 1) {
+    if(sim.numRoads() == 1) {
         SDL_SetRenderTarget(rend, road_tex[0]);
-        drawRoad(sim->model.roads, road_dim[0].w, road_dim[0].h);
+        drawRoad(*sim.roadsBegin(), road_dim[0].w, road_dim[0].h);
         
         SDL_SetRenderTarget(rend, world_tex);
         SDL_RenderCopyEx(rend, road_tex[0], NULL, &road_dim[0], 0.0, NULL, SDL_FLIP_NONE);
