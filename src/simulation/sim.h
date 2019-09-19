@@ -23,9 +23,18 @@ public:
 
 
     enum Action {
-        SimQuit,
-        SimContinue,
+        Quit,
+        Continue,
     };
+
+    enum Collision {
+        NoCollision,
+        FoundCollision,
+    };
+
+    RoadSegmentCollection roads;
+    IntersectionCollection intersections;
+    CarCollection cars;
 
     Sim() : _paused(false) {}
     ~Sim() {}
@@ -33,9 +42,7 @@ public:
     void paused(bool p) { _paused = p; }
     bool paused() const { return _paused; }
 
-    RoadSegmentCollection roads;
-    IntersectionCollection intersections;
-    CarCollection cars;
+    Collision collisionCheck() { return NoCollision; }
 
 private:
     bool _paused;

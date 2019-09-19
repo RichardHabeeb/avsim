@@ -17,6 +17,8 @@ extern "C" {
 namespace avsim {
 namespace visualization {
 
+const int64_t Vis2d::ScaleMax = 0xFF;
+
 void Vis2d::setScale(point_int64_t s) {
     s.x = std::max(1L, std::min(ScaleMax, s.x))
           * CFG_WORLD_SIZE_X / ScaleMax;

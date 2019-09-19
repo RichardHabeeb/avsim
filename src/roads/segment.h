@@ -2,6 +2,7 @@
 #include <vector>
 #include <memory>
 
+#include "src/common/types.h"
 #include "src/common/ctypes.h"
 
 namespace avsim {
@@ -18,8 +19,8 @@ public:
 
 class RoadSegment {
 public:
-    Lane::LaneCollection forward;
-    Lane::LaneCollection opposite;
+    Lane::LaneCollection forward_lanes;
+    Lane::LaneCollection opposite_lanes;
 
     RoadSegment() = default;
     ~RoadSegment() {};
@@ -29,6 +30,10 @@ public:
 
     meters_t width() const { return _dim.width; }
     void width(meters_t v) { _dim.width = v; }
+
+    /* alias of width */
+    meters_t length() const { return _dim.width; }
+    void length(meters_t v) { _dim.width = v; }
 
     point_meters_t midpoint() const { return _dim.midpoint; }
     void midpoint(point_meters_t &v) { _dim.midpoint = v; }
@@ -47,9 +52,12 @@ public:
     void rotation(radians_t v) { _rotation = v; }
 
     size_t lanes() const { 
-        return forward.size() + opposite.size();
+        return forward_lanes.size() + opposite_lanes.size();
     }
 
+    void lanes(size_t forward, size_t opposite);
+
+    void tick() {}
 
 protected:
     rect_meters_t _dim;

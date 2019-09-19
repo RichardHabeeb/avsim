@@ -7,12 +7,10 @@ namespace avsim {
 namespace common {
 
 
-template<typename T>
-class Point {
-    
-
-protected:
-    T _point;
+template <typename T>
+class Tickable {
+public:
+    T tick() = 0;
 };
 
 template<typename RectType>

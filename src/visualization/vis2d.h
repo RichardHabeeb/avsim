@@ -30,8 +30,7 @@ public:
 	uint16_t getRotation();
 	SDL_Point getTranslation();
 
-	static constexpr int64_t  ScaleMax = 0xFF;
-	static constexpr uint32_t DRAW_ROTATION_MAX = 0xFFFF;
+	static const int64_t ScaleMax;
 	
 private:
 
