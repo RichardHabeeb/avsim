@@ -1,6 +1,10 @@
 #pragma once
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 static inline uint32_t sub_until_zero(uint32_t a, uint32_t b) {
     return (b <= a) ? a - b : 0; 
@@ -28,3 +32,8 @@ static inline int32_t mod(int32_t x, int32_t m) {
 static inline int32_t modular_dist(int32_t a, int32_t b, int32_t m) {
     return min(mod(a - b, m), mod(b - a, m));
 }
+
+#ifdef __cplusplus
+} /* extern C */
+#endif
+

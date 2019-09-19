@@ -4,46 +4,62 @@
 #include <SDL2/SDL.h>
 
 #include "src/visualization/visualization.h"
-
-extern "C" {
+#include "src/roads/segment.h"
 #include "src/simulation/sim.h"
-#include "src/roads/loop.h"
-}
+#include "src/common/ctypes.h"
+
 
 namespace avsim {
 namespace visualization {
 
 class Vis2d : public Visualization {
 public:
+    using RoadTexPair = std::pair<SDL_Texture *, std::shared_ptr<roads::RoadSegment>>;
+
 	Vis2d() = default;
 	~Vis2d();
 
 	Error setup(simulation::Sim &sim);
 	Error draw(simulation::Sim &sim);
-	Error mapPointToDrawnObject(simulation::Sim &sim, SDL_Point, car_t **, road_t **);
+	Error mapPointToDrawnObject(simulation::Sim &sim, SDL_Point, car_t **, roads::RoadSegment **);
 
-	void setScale(SDL_Point s);
+	void setScale(point_int64_t s);
 	void setRotation(uint16_t r);
 	void setTranslation(SDL_Point s);
-	SDL_Point getScale();
+	point_int64_t getScale();
 	uint16_t getRotation();
 	SDL_Point getTranslation();
 
-	static constexpr uint32_t DRAW_SCALE_MAX = 0xFF;
+	static constexpr int64_t  ScaleMax = 0xFF;
 	static constexpr uint32_t DRAW_ROTATION_MAX = 0xFFFF;
 	
 private:
 
     Error drawRoad(
-        road_t &road,
-        uint32_t road_width_px,
-        uint32_t road_height_px);
+        roads::RoadSegment &road);
+
+    constexpr pixels_t toPixels(meters_t m) const
+    {
+        return {
+            static_cast<decltype(pixels_t::v)>(m.v * 10.0)
+        };
+    }
+
+    constexpr SDL_Rect roadToSDLRect(roads::RoadSegment &r) const 
+    {
+        return {
+            .x = static_cast<int>(toPixels(r.x()).v),
+            .y = static_cast<int>(toPixels(r.y()).v),
+            .w = static_cast<int>(toPixels(r.width()).v),
+            .h = static_cast<int>(toPixels(r.height()).v),
+        };
+    }
+
 
     SDL_Window *window;
     SDL_Renderer *rend;
     SDL_Texture *world_tex;
-    std::vector<SDL_Texture *> road_tex;
-    std::vector<SDL_Rect> road_dim;
+    std::vector<RoadTexPair> road_tex;
     SDL_Rect view;
     float view_angle;
 };

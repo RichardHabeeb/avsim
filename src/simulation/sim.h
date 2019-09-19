@@ -1,8 +1,8 @@
 #pragma once
 #include <vector>
 
-#include "src/common/geometry.h"
-#include "src/roads/road.h"
+#include "src/common/ctypes.h"
+#include "src/roads/segment.h"
 
 extern "C" {
 #include "src/vehicles/simple_car.h"
@@ -19,7 +19,7 @@ public:
     using IntersectionCollection =
         std::vector<std::shared_ptr<roads::Intersection>>;
     using CarCollection = 
-        std::vector<std:shared_ptr<car_t>>;
+        std::vector<std::shared_ptr<car_t>>;
 
 
     enum Action {

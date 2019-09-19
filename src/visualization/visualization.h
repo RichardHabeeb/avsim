@@ -1,4 +1,5 @@
 #include "src/simulation/sim.h"
+#include "src/common/types.h"
 
 namespace avsim {
 namespace visualization {

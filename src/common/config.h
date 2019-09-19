@@ -1,6 +1,5 @@
 #pragma once
 
-
 #define CFG_TICK_SLP_US (1000*10)
 #define CFG_TICKS_PER_S (1000*1000 / CFG_TICK_SLP_US)
 #define CFG_NUM_CARS (40)

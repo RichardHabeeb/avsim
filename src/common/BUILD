@@ -6,5 +6,7 @@ cc_library(
 	hdrs = [
 		"util.h",
 		"config.h",
+		"ctypes.h",
+		"types.h",
 	],
 )
