@@ -10,7 +10,7 @@ namespace common {
 template <typename T>
 class Tickable {
 public:
-    T tick() = 0;
+    virtual T tick() = 0;
 };
 
 template<typename RectType>

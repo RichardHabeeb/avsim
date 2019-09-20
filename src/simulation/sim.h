@@ -1,6 +1,8 @@
 #pragma once
 #include <vector>
+#include <memory>
 
+#include "src/common/types.h"
 #include "src/common/ctypes.h"
 #include "src/roads/segment.h"
 
@@ -12,7 +14,8 @@ namespace avsim {
 namespace simulation {
 
 
-class Sim {
+
+class Sim : public common::Tickable<void> {
 public:
     using RoadSegmentCollection = 
         std::vector<std::shared_ptr<roads::RoadSegment>>;
@@ -21,15 +24,14 @@ public:
     using CarCollection = 
         std::vector<std::shared_ptr<car_t>>;
 
+    enum Collision {
+        NoCollision,
+        FoundCollision,
+    };
 
     enum Action {
         Quit,
         Continue,
-    };
-
-    enum Collision {
-        NoCollision,
-        FoundCollision,
     };
 
     RoadSegmentCollection roads;
@@ -43,6 +45,7 @@ public:
     bool paused() const { return _paused; }
 
     Collision collisionCheck() { return NoCollision; }
+    void tick();
 
 private:
     bool _paused;

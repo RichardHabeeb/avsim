@@ -30,6 +30,8 @@ public:
 	uint16_t getRotation();
 	SDL_Point getTranslation();
 
+    point_pixels_t getWindowSize(); 
+
 	static const int64_t ScaleMax;
 	
 private:
@@ -40,7 +42,7 @@ private:
     constexpr pixels_t toPixels(meters_t m) const
     {
         return {
-            static_cast<decltype(pixels_t::v)>(m.v * 10.0)
+            static_cast<decltype(pixels_t::v)>(m.v * 5.0)
         };
     }
 

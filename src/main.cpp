@@ -2,18 +2,19 @@
 #include <random>
 #include <ctime>
 #include <memory>
-#include <unistd.h>
+#include <time.h>
 #include <SDL2/SDL.h>
+
+#include "src/simulation/sim.h"
+#include "src/visualization/vis2d.h"
+#include "src/common/config.h"
+#include "src/roads/segment.h"
 
 extern "C" {
 #include "src/vehicles/simple_car.h"
 #include "src/planner/basic_ai.h"
 }
 
-#include "src/simulation/sim.h"
-#include "src/visualization/vis2d.h"
-#include "src/common/config.h"
-#include "src/roads/segment.h"
 
 namespace avsim {
 
@@ -42,8 +43,8 @@ static simulation::Sim::Action handle_events(
             }
         } else if(e.type == SDL_MOUSEBUTTONDOWN) {
             if(e.button.button == SDL_BUTTON_LEFT) {
-                car_t *clicked_car;
-                roads::RoadSegment *clicked_road;
+                car_t *clicked_car = NULL;
+                roads::RoadSegment *clicked_road = NULL;
                 vis.mapPointToDrawnObject(
                         sim,
                         (SDL_Point) { e.button.x, e.button.y },
@@ -89,19 +90,7 @@ simulation::Sim::Action tick(simulation::Sim &sim, visualization::Vis2d &vis) {
         return simulation::Sim::Quit;
     }
 
-    if(!sim.paused()) {
-        for(auto it = sim.roads.begin(); 
-            it != sim.roads.end(); ++it)
-        {
-            (*it)->tick();
-        }
-        for(auto it = sim.cars.begin();
-            it != sim.cars.end(); ++it)
-        {
-            //(*it)->tick();
-        }
-    }
-
+    sim.tick();
     vis.draw(sim);
 
     return simulation::Sim::Continue;
@@ -170,9 +159,23 @@ int main(int argc, char* argv[]) {
 #endif
     vis.setup(sim);
 
-    while(tick(sim, vis) == simulation::Sim::Continue) {
-        usleep(CFG_TICK_SLP_US); //TODO framerate control
-    }
+    do {
+        clock_t start = clock();
+        if(tick(sim, vis) == simulation::Sim::Quit) {
+            break;
+        }
+        clock_t end = clock();
+
+        nanoseconds_t tick_runtime = 
+            {(end - start) * 1000000000L / CLOCKS_PER_SEC};
+
+        timespec t = {
+            .tv_sec = 0,
+            .tv_nsec =
+                default_cfg.tick_duration.v - tick_runtime.v,
+        };
+        nanosleep(&t, NULL);
+    } while(1);
 
 	return 0;
 }

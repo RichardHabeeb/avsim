@@ -17,7 +17,7 @@ public:
     LaneCollection sinks;
 };
 
-class RoadSegment {
+class RoadSegment : public common::Tickable<void> {
 public:
     Lane::LaneCollection forward_lanes;
     Lane::LaneCollection opposite_lanes;
@@ -66,12 +66,14 @@ protected:
     radians_t _rotation;
 };
 
-class Intersection {
+class Intersection : public common::Tickable<void> {
 public:
     using RoadSegmentCollection =
         std::vector<std::shared_ptr<RoadSegment>>;
     
     RoadSegmentCollection roads;
+
+    void tick() {}
 };
 
 

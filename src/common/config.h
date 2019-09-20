@@ -1,5 +1,11 @@
 #pragma once
 
+#include "src/common/ctypes.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define CFG_TICK_SLP_US (1000*10)
 #define CFG_TICKS_PER_S (1000*1000 / CFG_TICK_SLP_US)
 #define CFG_NUM_CARS (40)
@@ -30,10 +36,35 @@
 /* SINGLE ROAD SCENARIO SETTINGS */
 #define CFG_SINGLE_ROAD
 #ifdef CFG_SINGLE_ROAD
-
 #define CFG_SINGLE_NUM_LANES 6
 #define CFG_SINGLE_LEN_M 300
 #define CFG_SINGLE_LANE_HEIGHT_M 5
+#endif /* CFG_SINGLE_ROAD */
 
+
+
+typedef struct {
+    pixels_t window_width;
+    pixels_t window_height;
+
+    meters_t world_width;
+    meters_t world_height;
+
+    nanoseconds_t tick_duration;
+
+    size_t max_num_cars;
+} config_t;
+
+static const config_t default_cfg = {
+    .window_width = {1200L},
+    .window_height = {500L},
+    .world_width = {5000L},
+    .world_height = {5000L},
+    .tick_duration = {1000L*1000L*10L},
+};
+
+
+
+#ifdef __cplusplus
+} /* extern C */
 #endif
-

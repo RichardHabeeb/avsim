@@ -58,17 +58,33 @@ SDL_Point Vis2d::getTranslation() {
 }
 
 
+point_pixels_t Vis2d::getWindowSize() {
+    int window_w, window_h;
+    SDL_GetWindowSize(window, &window_w, &window_h);
+    return {
+        .x = {window_w},
+        .y = {window_h},
+    };
+}
+
+
 Vis2d::Error Vis2d::setup(simulation::Sim &sim) {
     if(SDL_Init(SDL_INIT_VIDEO) < 0) {
         return InternalError;
     }
+    SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
+    SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 8);
+    SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, 1);
+
     window = SDL_CreateWindow(
             "Autonomous Car Simulator (Press SPACE to pause, Q to quit)",
             SDL_WINDOWPOS_UNDEFINED,
             SDL_WINDOWPOS_UNDEFINED,
             CFG_WINDOW_SIZE_X,
             CFG_WINDOW_SIZE_Y,
-            SDL_WINDOW_SHOWN); //TODO resizeable window
+            SDL_WINDOW_SHOWN |
+            SDL_WINDOW_RESIZABLE |
+            SDL_WINDOW_OPENGL);
     if(window == NULL) {
         return InternalError;
     }
@@ -81,6 +97,7 @@ Vis2d::Error Vis2d::setup(simulation::Sim &sim) {
     SDL_SetRenderDrawBlendMode(rend, SDL_BLENDMODE_BLEND);
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
 
+
     world_tex = SDL_CreateTexture(
             rend,
             SDL_PIXELFORMAT_RGBA8888,
@@ -88,10 +105,12 @@ Vis2d::Error Vis2d::setup(simulation::Sim &sim) {
             CFG_WORLD_SIZE_X,
             CFG_WORLD_SIZE_Y);
 
-    view.x = CFG_WORLD_SIZE_X/2 - CFG_WINDOW_SIZE_X/2;
-    view.y = CFG_WORLD_SIZE_Y/2 - CFG_WINDOW_SIZE_Y/2;
-    view.w = CFG_WINDOW_SIZE_X;
-    view.h = CFG_WINDOW_SIZE_Y;
+    point_pixels_t window_size = getWindowSize();
+
+    view.x = CFG_WORLD_SIZE_X/2 - window_size.x.v/2;
+    view.y = CFG_WORLD_SIZE_Y/2 - window_size.y.v/2;
+    view.w = static_cast<int>(window_size.x.v);
+    view.h = static_cast<int>(window_size.y.v);
     
     road_tex.reserve(sim.roads.size());
 
@@ -291,7 +310,7 @@ Vis2d::Error Vis2d::draw(simulation::Sim &sim) {
                          tex,
                          NULL,
                          &r,
-                         0.0,
+                         1.0,
                          NULL,
                          SDL_FLIP_NONE);
     }
@@ -300,11 +319,12 @@ Vis2d::Error Vis2d::draw(simulation::Sim &sim) {
     SDL_SetRenderTarget(rend, NULL);
     SDL_RenderClear(rend);
 
+    point_pixels_t window_size = getWindowSize();
     const SDL_Rect window_rect = {
         0,
         0,
-        CFG_WINDOW_SIZE_X,
-        CFG_WINDOW_SIZE_Y
+        static_cast<int>(window_size.x.v),
+        static_cast<int>(window_size.y.v),
     };
 
     SDL_RenderCopyEx(

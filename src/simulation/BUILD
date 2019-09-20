@@ -2,7 +2,9 @@ package(default_visibility = ["//visibility:public"])
 
 cc_library(
 	name = "sim",
-	srcs = [],
+	srcs = [
+		"sim.cpp",
+	],
 	hdrs = [
 		"sim.h",
 	],
