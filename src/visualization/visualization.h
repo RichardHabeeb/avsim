@@ -8,6 +8,7 @@ class Visualization {
 public:
 	enum Error {
 		InternalError,
+        RenderingError,
         NoError,
 	};
 

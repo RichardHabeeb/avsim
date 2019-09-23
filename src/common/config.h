@@ -47,6 +47,7 @@ typedef struct {
     pixels_t window_width;
     pixels_t window_height;
 
+    pixels_t world_tile_size;
     meters_t world_width;
     meters_t world_height;
 
@@ -58,6 +59,7 @@ typedef struct {
 static const config_t default_cfg = {
     .window_width = {1200L},
     .window_height = {500L},
+    .world_tile_size = {512L},
     .world_width = {5000L},
     .world_height = {5000L},
     .tick_duration = {1000L*1000L*10L},

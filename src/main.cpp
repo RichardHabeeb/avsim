@@ -59,9 +59,10 @@ static simulation::Sim::Action handle_events(
 
         } else if(e.type == SDL_MOUSEMOTION) {
             if((e.motion.state & SDL_BUTTON_RMASK) > 0) {
-                SDL_Point translation = vis.getTranslation();
-                translation.x -= (e.motion.x - prev_mouse_pos.x);
-                translation.y -= (e.motion.y - prev_mouse_pos.y);
+                auto translation = vis.getTranslation();
+                auto scale = vis.getScale();
+                translation.x.v += (e.motion.x - prev_mouse_pos.x)/scale;
+                translation.y.v += (e.motion.y - prev_mouse_pos.y)/scale;
                 vis.setTranslation(translation);
             }
 
@@ -71,9 +72,9 @@ static simulation::Sim::Action handle_events(
         } else if(e.type == SDL_MOUSEWHEEL) {
             double s = vis.getScale();
             if(e.wheel.y > 0) {
-                s -= 0.025;
-            } else {
                 s += 0.025;
+            } else {
+                s -= 0.025;
             }
             vis.setScale(s);
         } else if(e.type == SDL_WINDOWEVENT) {
@@ -81,6 +82,7 @@ static simulation::Sim::Action handle_events(
                 case SDL_WINDOWEVENT_RESIZED:
                 case SDL_WINDOWEVENT_SIZE_CHANGED:
                     vis.setScale(vis.getScale());
+                    vis.setTranslation(vis.getTranslation());
                     break;
                 default:
                     break;
@@ -142,6 +144,8 @@ static void setup_single_road(simulation::Sim &sim) {
     }
     road->width({CFG_SINGLE_LEN_M});
     road->height({(double)CFG_SINGLE_LANE_HEIGHT_M * road->lanes()});
+    road->x({50});
+    road->y({50});
 
     sim.roads.push_back(road);
 }
@@ -166,7 +170,9 @@ int main(int argc, char* argv[]) {
         sim.cars.push_back(car);
     }
 #endif
-    vis.setup(sim);
+    if(vis.setup(sim) != visualization::Vis2d::NoError) {
+        return -1;
+    }
 
     do {
         clock_t start = clock();

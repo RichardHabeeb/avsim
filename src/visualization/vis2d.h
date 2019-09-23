@@ -25,17 +25,22 @@ public:
 
 	void setScale(double s);
 	void setRotation(uint16_t r);
-	void setTranslation(SDL_Point s);
+	void setTranslation(point_pixels_t s);
     double getScale();
 	uint16_t getRotation();
-	SDL_Point getTranslation();
+	point_pixels_t getTranslation();
 
     point_pixels_t getWindowSize(); 
 
 private:
 
+    Error drawBackground();
     Error drawRoad(
         roads::RoadSegment &road);
+
+    Error drawRoads(simulation::Sim &);
+    Error drawCars(simulation::Sim &);
+
 
     constexpr pixels_t toPixels(meters_t m) const
     {
@@ -48,8 +53,8 @@ private:
     constexpr SDL_Rect roadToSDLRect(roads::RoadSegment &r) const 
     {
         return {
-            .x = static_cast<int>(toPixels(r.x()).v),
-            .y = static_cast<int>(toPixels(r.y()).v),
+            .x = static_cast<int>(toPixels(r.x()).v + _world_origin.x.v),
+            .y = static_cast<int>(toPixels(r.y()).v + _world_origin.y.v),
             .w = static_cast<int>(toPixels(r.width()).v),
             .h = static_cast<int>(toPixels(r.height()).v),
         };
@@ -58,15 +63,16 @@ private:
     /* Number of pixels in a meter on the world frame */
     double _pixels_per_meter;
 
-    double _view_scale;
-    double _view_angle;
-    SDL_Rect _default_view;
-    SDL_Rect view;
-
+    point_pixels_t _world_origin;
+    double _world_scale;
+    
     SDL_Window *window;
     SDL_Renderer *rend;
-    SDL_Texture *world_tex;
-    std::vector<RoadTexPair> road_tex;
+
+    pixels_t _world_tile_size;
+    std::vector<std::vector<SDL_Texture *>> _world_tiles;
+
+    std::vector<RoadTexPair> _roads;
 };
 
 } /* visualization */
