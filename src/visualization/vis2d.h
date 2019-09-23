@@ -23,17 +23,15 @@ public:
 	Error draw(simulation::Sim &sim);
 	Error mapPointToDrawnObject(simulation::Sim &sim, SDL_Point, car_t **, roads::RoadSegment **);
 
-	void setScale(point_int64_t s);
+	void setScale(double s);
 	void setRotation(uint16_t r);
 	void setTranslation(SDL_Point s);
-	point_int64_t getScale();
+    double getScale();
 	uint16_t getRotation();
 	SDL_Point getTranslation();
 
     point_pixels_t getWindowSize(); 
 
-	static const int64_t ScaleMax;
-	
 private:
 
     Error drawRoad(
@@ -42,7 +40,8 @@ private:
     constexpr pixels_t toPixels(meters_t m) const
     {
         return {
-            static_cast<decltype(pixels_t::v)>(m.v * 5.0)
+            static_cast<decltype(pixels_t::v)>(
+                m.v * _pixels_per_meter)
         };
     }
 
@@ -56,13 +55,18 @@ private:
         };
     }
 
+    /* Number of pixels in a meter on the world frame */
+    double _pixels_per_meter;
+
+    double _view_scale;
+    double _view_angle;
+    SDL_Rect _default_view;
+    SDL_Rect view;
 
     SDL_Window *window;
     SDL_Renderer *rend;
     SDL_Texture *world_tex;
     std::vector<RoadTexPair> road_tex;
-    SDL_Rect view;
-    float view_angle;
 };
 
 } /* visualization */

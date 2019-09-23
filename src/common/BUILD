@@ -8,5 +8,6 @@ cc_library(
 		"config.h",
 		"ctypes.h",
 		"types.h",
+		"algorithm.h",
 	],
 )

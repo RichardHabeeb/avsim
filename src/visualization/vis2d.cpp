@@ -1,5 +1,6 @@
 #include <cstdint>
 #include <algorithm>
+#include <iostream>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL2_gfxPrimitives.h>
@@ -7,49 +8,41 @@
 #include "src/visualization/vis2d.h"
 #include "src/simulation/sim.h"
 #include "src/roads/segment.h"
+#include "src/common/config.h"
 #include "src/common/ctypes.h"
+#include "src/common/algorithm.h"
 
 extern "C" {
-#include "src/common/config.h"
 #include "src/vehicles/simple_car.h"
 }
 
 namespace avsim {
 namespace visualization {
 
-const int64_t Vis2d::ScaleMax = 0xFF;
 
-void Vis2d::setScale(point_int64_t s) {
-    s.x = std::max(1L, std::min(ScaleMax, s.x))
-          * CFG_WORLD_SIZE_X / ScaleMax;
+void Vis2d::setScale(double s) {
+    _view_scale = common::clamp(s, 0.25, 5.0);
 
-    s.y = std::max(1L, std::min(ScaleMax, s.y))
-          * CFG_WORLD_SIZE_Y / ScaleMax;
+    point_pixels_t window_size = getWindowSize();
+    auto new_w = static_cast<int>(window_size.x.v * _view_scale);
+    auto new_h = static_cast<int>(window_size.y.v * _view_scale);
 
-    view.x -= (s.x-view.w)/2;
-    view.y -= (s.y-view.h)/2;
-    view.w = s.x;
-    view.h = s.y;
-
-    view.x = std::max(0, std::min(CFG_WORLD_SIZE_X-view.w, view.x));
-    view.y = std::max(0, std::min(CFG_WORLD_SIZE_Y-view.h, view.y));
+    view.x = common::clamp(view.x + (new_w - view.w)/2,
+        0, (int)toPixels(default_cfg.world_width).v - new_w);
+    view.y = common::clamp(view.y + (new_h - view.h)/2,
+        0, (int)toPixels(default_cfg.world_height).v - new_h);
+    view.w = new_w;
+    view.h = new_h;
 }
 
 
-point_int64_t Vis2d::getScale() {
-    return {
-        std::max(1L,
-                 std::min(ScaleMax,
-                          view.w*ScaleMax/CFG_WORLD_SIZE_X)),
-        std::max(1L,
-                 std::min(ScaleMax,
-                          view.h*ScaleMax/CFG_WORLD_SIZE_Y))
-    };
+double Vis2d::getScale() {
+    return _view_scale;
 }
 
 void  Vis2d::setTranslation(SDL_Point s) {
-    view.x = std::max(0, std::min(CFG_WORLD_SIZE_X-view.w, s.x));
-    view.y = std::max(0, std::min(CFG_WORLD_SIZE_Y-view.h, s.y));
+    view.x = std::max(0, std::min((int)toPixels(default_cfg.world_width).v - view.w, s.x));
+    view.y = std::max(0, std::min((int)toPixels(default_cfg.world_height).v - view.h, s.y));
 }
 
 
@@ -69,6 +62,9 @@ point_pixels_t Vis2d::getWindowSize() {
 
 
 Vis2d::Error Vis2d::setup(simulation::Sim &sim) {
+    _pixels_per_meter = 2.0;
+    _view_scale = 1.0;
+
     if(SDL_Init(SDL_INIT_VIDEO) < 0) {
         return InternalError;
     }
@@ -80,8 +76,8 @@ Vis2d::Error Vis2d::setup(simulation::Sim &sim) {
             "Autonomous Car Simulator (Press SPACE to pause, Q to quit)",
             SDL_WINDOWPOS_UNDEFINED,
             SDL_WINDOWPOS_UNDEFINED,
-            CFG_WINDOW_SIZE_X,
-            CFG_WINDOW_SIZE_Y,
+            default_cfg.window_width.v,
+            default_cfg.window_height.v,
             SDL_WINDOW_SHOWN |
             SDL_WINDOW_RESIZABLE |
             SDL_WINDOW_OPENGL);
@@ -102,16 +98,9 @@ Vis2d::Error Vis2d::setup(simulation::Sim &sim) {
             rend,
             SDL_PIXELFORMAT_RGBA8888,
             SDL_TEXTUREACCESS_TARGET,
-            CFG_WORLD_SIZE_X,
-            CFG_WORLD_SIZE_Y);
+            (int)toPixels(default_cfg.world_width).v,
+            (int)toPixels(default_cfg.world_height).v);
 
-    point_pixels_t window_size = getWindowSize();
-
-    view.x = CFG_WORLD_SIZE_X/2 - window_size.x.v/2;
-    view.y = CFG_WORLD_SIZE_Y/2 - window_size.y.v/2;
-    view.w = static_cast<int>(window_size.x.v);
-    view.h = static_cast<int>(window_size.y.v);
-    
     road_tex.reserve(sim.roads.size());
 
     for(auto it = sim.roads.begin();
@@ -171,18 +160,41 @@ Vis2d::Error Vis2d::drawRoad(roads::RoadSegment &road)
 {
     auto road_width_px = toPixels(road.width());
     auto road_height_px = toPixels(road.height());
-    //pixels_t lane_height_px = {
-    //    road_height_px.v /
-    //    static_cast<decltype(pixels_t::v)>(road.lanes())};
+
 
     /* Draw road surface */
-    SDL_Rect road_surface = {0, 0, 
+    SDL_Rect road_surface = {
+        0,
+        0, 
         static_cast<int>(road_width_px.v),
-        static_cast<int>(road_height_px.v)};
+        static_cast<int>(road_height_px.v)
+    };
     SDL_SetRenderDrawColor(rend, 0x30, 0x30, 0x30, 0xFF);
     SDL_RenderFillRect(rend, &road_surface);
  
+
     /* Draw stripes */
+    SDL_SetRenderDrawColor(rend, 0xFF, 0xFF, 0x55, 0xFF);
+
+    pixels_t lane_height_px = {
+        road_height_px.v /
+        static_cast<decltype(pixels_t::v)>(road.lanes())
+    };
+    
+    /* Two-way road */
+    if( road.forward_lanes.size() > 0 &&
+        road.opposite_lanes.size() > 0)
+    {
+        /* Draw center stripe */
+        SDL_Rect stripe = {
+            .x = 0,
+            .y = road_surface.h/2,
+            .w = road_surface.w,
+            .h = toPixels({.3}).v,
+        };
+        SDL_RenderFillRect(rend, &stripe); 
+    } else {
+    }
 //    uint32_t stripe_length_px = 1*px_per_m;
 //    uint32_t stripe_height_px = stripe_length_px/16;
 //    stripe_length_px = stripe_length_px > 0 ? stripe_length_px : 1;
@@ -327,6 +339,7 @@ Vis2d::Error Vis2d::draw(simulation::Sim &sim) {
         static_cast<int>(window_size.y.v),
     };
 
+    
     SDL_RenderCopyEx(
         rend,
         world_tex,
