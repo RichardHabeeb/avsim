@@ -17,11 +17,11 @@ namespace simulation {
 
 class Sim : public common::Tickable<void> {
 public:
-    using RoadSegmentCollection = 
+    using RoadSegmentCollection =
         std::vector<std::shared_ptr<roads::RoadSegment>>;
     using IntersectionCollection =
         std::vector<std::shared_ptr<roads::Intersection>>;
-    using CarCollection = 
+    using CarCollection =
         std::vector<std::shared_ptr<car_t>>;
 
     enum Collision {

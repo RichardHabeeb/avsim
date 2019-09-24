@@ -10,11 +10,11 @@ typedef struct { double v; } meters_t;
 typedef struct { int64_t v; } nanoseconds_t;
 typedef struct { int64_t v; } pixels_t;
 
-#define TEMPLATE_POINT_STRUCT(TYPE_NAME, TYPE) \
+#define TEMPLATE_POINT_STRUCT(NAME, TYPE) \
     typedef struct { \
         TYPE x; \
         TYPE y; \
-    } TYPE_NAME;
+    } NAME;
 
 TEMPLATE_POINT_STRUCT(point_meters_t, meters_t);
 TEMPLATE_POINT_STRUCT(point_pixels_t, pixels_t);

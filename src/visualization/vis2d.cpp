@@ -31,7 +31,7 @@ double Vis2d::getScale() {
 }
 
 void  Vis2d::setTranslation(point_pixels_t s) {
-    
+
     auto window_size = getWindowSize();
 
     _world_origin.x = {common::clamp(s.x.v,
@@ -122,13 +122,13 @@ Vis2d::Error Vis2d::setup(simulation::Sim &sim) {
     SDL_RenderClear(rend);
 
     bool checkered_r = false; /* do a checkerboard pattern */
-    
+
 
     _world_tiles.resize(tiles_h);
     for(auto r = _world_tiles.begin(); r != _world_tiles.end(); ++r) {
         (*r).resize(tiles_w);
         bool checkered_c = checkered_r;
-        for(auto c = (*r).begin(); c != (*r).end(); ++c) { 
+        for(auto c = (*r).begin(); c != (*r).end(); ++c) {
             if(checkered_c) {
                 *c = bg_tex0;
             } else {
@@ -153,7 +153,9 @@ Vis2d::Error Vis2d::setup(simulation::Sim &sim) {
             toPixels(road->width()).v,
             toPixels(road->height()).v);
         if(road_texture == NULL) {
-            std::cout << "Error: road texture too large\n";
+            std::cout << "Error: road texture invalid: "
+                << toPixels(road->width()).v << "x"
+                << toPixels(road->height()).v << "\n";
             return InternalError;
         }
 
@@ -163,6 +165,29 @@ Vis2d::Error Vis2d::setup(simulation::Sim &sim) {
             return ret;
         }
         _roads.push_back({road_texture, road});
+    }
+
+    _intersections.reserve(sim.intersections.size());
+    for(auto it = sim.intersections.begin();
+        it != sim.intersections.end(); ++it)
+    {
+        auto inter = *it;
+        auto inter_texture = SDL_CreateTexture(
+            rend,
+            SDL_PIXELFORMAT_RGBA8888,
+            SDL_TEXTUREACCESS_TARGET,
+            toPixels(inter->width()).v,
+            toPixels(inter->height()).v);
+        if(inter_texture == NULL) {
+            std::cout << "Error: road texture invalid: "
+                << toPixels(inter->width()).v << "x"
+                << toPixels(inter->height()).v << "\n";
+        }
+        SDL_SetRenderTarget(rend, inter_texture);
+        SDL_SetRenderDrawColor(rend, 0x30, 0x30, 0x30, 0xFF);
+        SDL_RenderClear(rend);
+
+        _intersections.push_back({inter_texture, inter});
     }
 
     return NoError;
@@ -198,18 +223,18 @@ Vis2d::Error Vis2d::mapPointToDrawnObject(
             /* TODO */
         }
     }
-    
+
     return NoError;
 }
 
 
 Vis2d::Error Vis2d::drawBackground() {
-    
+
     SDL_SetRenderTarget(rend, NULL);
     SDL_RenderClear(rend);
 
     /* Render the world BG */
-    SDL_Rect rect; 
+    SDL_Rect rect;
     rect.w = static_cast<int>(default_cfg.world_tile_size.v);
     rect.h = static_cast<int>(default_cfg.world_tile_size.v);
     rect.x = _world_origin.x.v;
@@ -272,7 +297,7 @@ void Vis2d::drawCenterStripes(
     center.x = 0;
     center.y = y_offset.v - 2*center.h;
 
-    SDL_RenderFillRect(rend, &center); 
+    SDL_RenderFillRect(rend, &center);
 
     center.y = road_surface.h/2 + 2*center.h;
     SDL_RenderFillRect(rend, &center);
@@ -287,13 +312,13 @@ Vis2d::Error Vis2d::drawRoad(roads::RoadSegment &road)
     /* Draw road surface */
     SDL_Rect road_surface = {
         0,
-        0, 
+        0,
         static_cast<int>(road_width_px.v),
         static_cast<int>(road_height_px.v)
     };
     SDL_SetRenderDrawColor(rend, 0x30, 0x30, 0x30, 0xFF);
     SDL_RenderFillRect(rend, &road_surface);
- 
+
 
     pixels_t lane_height_px = {
         road_height_px.v /
@@ -303,15 +328,15 @@ Vis2d::Error Vis2d::drawRoad(roads::RoadSegment &road)
     pixels_t stripe_h = toPixels({0.2});
 
     SDL_Rect stripe = {
-        .x = 0,
-        .y = lane_height_px.v,
-        .w = toPixels({2}).v,
-        .h = stripe_h.v,
+        .x = static_cast<int>(0),
+        .y = static_cast<int>(lane_height_px.v),
+        .w = static_cast<int>(toPixels({2}).v),
+        .h = static_cast<int>(stripe_h.v),
     };
 
     /* Draw stripes */
     drawLaneStripes(stripe, road_surface, lane_height_px, road.forward_lanes.size()-1);
-    
+
     /* Two-way road */
     if(road.opposite_lanes.size() > 0)
     {
@@ -333,9 +358,9 @@ Vis2d::Error Vis2d::drawRoads(simulation::Sim &sim) {
     {
         auto tex = (*it).first;
         auto road = (*it).second;
-       
+
         /* blit the texture to the world */
-        SDL_Rect r = roadToSDLRect(*road);
+        SDL_Rect r = toSDLRect(*road);
         SDL_SetRenderTarget(rend, NULL);
         SDL_RenderCopyEx(rend,
                          tex,
@@ -345,6 +370,29 @@ Vis2d::Error Vis2d::drawRoads(simulation::Sim &sim) {
                          NULL,
                          SDL_FLIP_NONE);
     }
+    return NoError;
+}
+
+
+Vis2d::Error Vis2d::drawIntersections(simulation::Sim &sim) {
+
+    for(auto it = _intersections.begin(); it != _intersections.end(); ++it)
+    {
+        auto tex = (*it).first;
+        auto intersection = (*it).second;
+
+        /* blit the texture to the world */
+        SDL_Rect r = toSDLRect(*intersection);
+        SDL_SetRenderTarget(rend, NULL);
+        SDL_RenderCopyEx(rend,
+                         tex,
+                         NULL,
+                         &r,
+                         0.0,
+                         NULL,
+                         SDL_FLIP_NONE);
+    }
+
     return NoError;
 }
 
@@ -359,6 +407,9 @@ Vis2d::Error Vis2d::draw(simulation::Sim &sim) {
     if(ret != NoError) return ret;
 
     ret = drawRoads(sim);
+    if(ret != NoError) return ret;
+
+    ret = drawIntersections(sim);
     if(ret != NoError) return ret;
 
     ret = drawCars(sim);

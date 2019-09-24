@@ -111,10 +111,10 @@ void setup_car_params(
     roads::RoadSegment &road,
     simulation::Sim &sim)
 {
-    car.length = CFG_SPACE_SCALE * 
+    car.length = CFG_SPACE_SCALE *
         (CFG_CAR_MIN_LEN_M + std::rand() %
             (CFG_CAR_MAX_LEN_M - CFG_CAR_MIN_LEN_M));
-    car.top_spd = CFG_SPACE_SCALE * 
+    car.top_spd = CFG_SPACE_SCALE *
         (CFG_CAR_MIN_TOP_SPD_MS + std::rand() %
             (CFG_CAR_MAX_TOP_SPD_MS - CFG_CAR_MIN_TOP_SPD_MS));
 
@@ -144,10 +144,22 @@ static void setup_single_road(simulation::Sim &sim) {
     }
     road->width({CFG_SINGLE_LEN_M});
     road->height({(double)CFG_SINGLE_LANE_HEIGHT_M * road->lanes()});
-    road->x({50});
-    road->y({50});
+    road->x({200});
+    road->y({200});
 
     sim.roads.push_back(road);
+
+    auto intersection = std::make_shared<roads::Intersection>();
+
+    intersection->height(road->height());
+    intersection->width(road->height());
+    intersection->left(road->right());
+    intersection->top(road->top());
+
+    intersection->roads.push_back(road);
+
+    sim.intersections.push_back(intersection);
+
 }
 #endif
 
@@ -181,7 +193,7 @@ int main(int argc, char* argv[]) {
         }
         clock_t end = clock();
 
-        nanoseconds_t tick_runtime = 
+        nanoseconds_t tick_runtime =
             {(end - start) * 1000000000L / CLOCKS_PER_SEC};
 
         timespec t = {

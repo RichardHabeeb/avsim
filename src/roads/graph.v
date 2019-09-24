@@ -22,7 +22,7 @@ Lemma eq_vertex_refl (T : Type) (v : vertex T) : eq_vertex T v v.
 Lemma eq_vertex_sym (T : Type) (v1 v2 :vertex T) : eq_vertex T v1 v2 -> eq_vertex T v2 v1.
 	Proof. unfold eq_vertex. intuition. Qed.
 
-Lemma eq_vertex_trans  (T : Type) (v1 v2 v3 : vertex T) : 
+Lemma eq_vertex_trans  (T : Type) (v1 v2 v3 : vertex T) :
 	eq_vertex T v1 v2 -> eq_vertex T v2 v3 -> eq_vertex T v1 v3.
 	Proof.
 	unfold eq_vertex in *.
@@ -37,7 +37,7 @@ Global Instance eq_vertex_equiv : forall (T: Type), Equivalence (eq_vertex T).
 	- apply eq_vertex_trans with y; trivial.
 	Qed.
 
-	
+
 
 
 Definition current_best_path (T : Type) (open : list (vertex T)) (best :) :=
@@ -47,5 +47,5 @@ Definition current_best_path (T : Type) (open : list (vertex T)) (best :) :=
 	end.
 
 Definition astar (T : Type) (orig dest : vertex T) (path : list (vertex T)) :=
-	
+
 

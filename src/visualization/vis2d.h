@@ -15,6 +15,7 @@ namespace visualization {
 class Vis2d : public Visualization {
 public:
     using RoadTexPair = std::pair<SDL_Texture *, std::shared_ptr<roads::RoadSegment>>;
+    using IntersectionTexPair = std::pair<SDL_Texture *, std::shared_ptr<roads::Intersection>>;
 
 	Vis2d() = default;
 	~Vis2d();
@@ -30,7 +31,7 @@ public:
 	uint16_t getRotation();
 	point_pixels_t getTranslation();
 
-    point_pixels_t getWindowSize(); 
+    point_pixels_t getWindowSize();
 
 private:
 
@@ -39,6 +40,7 @@ private:
         roads::RoadSegment &road);
 
     Error drawRoads(simulation::Sim &);
+    Error drawIntersections(simulation::Sim &);
     Error drawCars(simulation::Sim &);
 
     void drawLaneStripes(
@@ -60,22 +62,24 @@ private:
         };
     }
 
-    constexpr SDL_Rect roadToSDLRect(roads::RoadSegment &r) const 
+
+    constexpr SDL_Rect toSDLRect(common::RectMeters &r) const
     {
         return {
-            .x = static_cast<int>(toPixels(r.x()).v + _world_origin.x.v),
-            .y = static_cast<int>(toPixels(r.y()).v + _world_origin.y.v),
+            .x = static_cast<int>(toPixels(r.left()).v + _world_origin.x.v),
+            .y = static_cast<int>(toPixels(r.top()).v + _world_origin.y.v),
             .w = static_cast<int>(toPixels(r.width()).v),
             .h = static_cast<int>(toPixels(r.height()).v),
         };
     }
+
 
     /* Number of pixels in a meter on the world frame */
     double _pixels_per_meter;
 
     point_pixels_t _world_origin;
     double _world_scale;
-    
+
     SDL_Window *window;
     SDL_Renderer *rend;
 
@@ -83,6 +87,7 @@ private:
     std::vector<std::vector<SDL_Texture *>> _world_tiles;
 
     std::vector<RoadTexPair> _roads;
+    std::vector<IntersectionTexPair> _intersections;
 };
 
 } /* visualization */
