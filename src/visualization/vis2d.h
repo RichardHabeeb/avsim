@@ -41,6 +41,16 @@ private:
     Error drawRoads(simulation::Sim &);
     Error drawCars(simulation::Sim &);
 
+    void drawLaneStripes(
+        SDL_Rect &stripe,
+        SDL_Rect &road_surface,
+        pixels_t lane_height_px,
+        size_t num);
+    void drawCenterStripes(
+        SDL_Rect &road_surface,
+        pixels_t stripe_h,
+        pixels_t y_offset);
+
 
     constexpr pixels_t toPixels(meters_t m) const
     {

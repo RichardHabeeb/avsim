@@ -146,18 +146,23 @@ Vis2d::Error Vis2d::setup(simulation::Sim &sim) {
         it != sim.roads.end(); ++it)
     {
         auto road = *it;
-        auto _roadsture = SDL_CreateTexture(
+        auto road_texture = SDL_CreateTexture(
             rend,
             SDL_PIXELFORMAT_RGBA8888,
             SDL_TEXTUREACCESS_TARGET,
             toPixels(road->width()).v,
             toPixels(road->height()).v);
-        if(_roadsture == NULL) {
+        if(road_texture == NULL) {
             std::cout << "Error: road texture too large\n";
             return InternalError;
         }
 
-        _roads.push_back({_roadsture, road});
+        SDL_SetRenderTarget(rend, road_texture);
+        auto ret = drawRoad(*road);
+        if(ret != NoError) {
+            return ret;
+        }
+        _roads.push_back({road_texture, road});
     }
 
     return NoError;
@@ -232,11 +237,52 @@ Vis2d::Error Vis2d::drawBackground() {
 }
 
 
+
+void Vis2d::drawLaneStripes(
+    SDL_Rect &stripe,
+    SDL_Rect &road_surface,
+    pixels_t lane_height_px,
+    size_t num)
+{
+    SDL_SetRenderDrawColor(rend, 0xFF, 0xFF, 0x55, 0xFF);
+
+    for(size_t i = 0; i < num; ++i) {
+
+        while(stripe.x < road_surface.x+road_surface.w) {
+            SDL_RenderFillRect(rend, &stripe);
+            stripe.x += 2*stripe.w;
+        }
+
+        stripe.x = 0;
+        stripe.y += lane_height_px.v;
+    }
+}
+
+void Vis2d::drawCenterStripes(
+    SDL_Rect &road_surface,
+    pixels_t stripe_h,
+    pixels_t y_offset)
+{
+    SDL_SetRenderDrawColor(rend, 0xFF, 0xFF, 0x55, 0xFF);
+
+    /* Draw center stripes */
+    SDL_Rect center;
+    center.w = road_surface.w;
+    center.h = stripe_h.v;
+    center.x = 0;
+    center.y = y_offset.v - 2*center.h;
+
+    SDL_RenderFillRect(rend, &center); 
+
+    center.y = road_surface.h/2 + 2*center.h;
+    SDL_RenderFillRect(rend, &center);
+}
+
+
 Vis2d::Error Vis2d::drawRoad(roads::RoadSegment &road)
 {
     auto road_width_px = toPixels(road.width());
     auto road_height_px = toPixels(road.height());
-
 
     /* Draw road surface */
     SDL_Rect road_surface = {
@@ -249,34 +295,32 @@ Vis2d::Error Vis2d::drawRoad(roads::RoadSegment &road)
     SDL_RenderFillRect(rend, &road_surface);
  
 
-    /* Draw stripes */
-    SDL_SetRenderDrawColor(rend, 0xFF, 0xFF, 0x55, 0xFF);
-
     pixels_t lane_height_px = {
         road_height_px.v /
         static_cast<decltype(pixels_t::v)>(road.lanes())
     };
+
+    pixels_t stripe_h = toPixels({0.2});
+
+    SDL_Rect stripe = {
+        .x = 0,
+        .y = lane_height_px.v,
+        .w = toPixels({2}).v,
+        .h = stripe_h.v,
+    };
+
+    /* Draw stripes */
+    drawLaneStripes(stripe, road_surface, lane_height_px, road.forward_lanes.size()-1);
     
     /* Two-way road */
-    if( road.forward_lanes.size() > 0 &&
-        road.opposite_lanes.size() > 0)
+    if(road.opposite_lanes.size() > 0)
     {
-        /* Draw center stripes */
-        SDL_Rect stripe;
-        stripe.w = road_surface.w;
-        stripe.h = toPixels({0.2}).v;
-        stripe.x = 0;
-        stripe.y = road_surface.h/2 - 2*stripe.h;
-
-        SDL_RenderFillRect(rend, &stripe); 
-
-        stripe.y = road_surface.h/2 + 2*stripe.h;
-        SDL_RenderFillRect(rend, &stripe);
-
-
-    
-    } else {
+        drawCenterStripes(road_surface, stripe_h, {stripe.y});
     }
+
+    stripe.y += lane_height_px.v;
+    drawLaneStripes(stripe, road_surface, lane_height_px, road.opposite_lanes.size()-1);
+
     return NoError;
 }
 
@@ -289,13 +333,8 @@ Vis2d::Error Vis2d::drawRoads(simulation::Sim &sim) {
     {
         auto tex = (*it).first;
         auto road = (*it).second;
-
-        SDL_SetRenderTarget(rend, tex);
-        auto ret = drawRoad(*road);
-        if(ret != NoError) {
-            return ret;
-        }
-        
+       
+        /* blit the texture to the world */
         SDL_Rect r = roadToSDLRect(*road);
         SDL_SetRenderTarget(rend, NULL);
         SDL_RenderCopyEx(rend,
@@ -316,33 +355,14 @@ Vis2d::Error Vis2d::drawCars(simulation::Sim &sim) {
 
 
 Vis2d::Error Vis2d::draw(simulation::Sim &sim) {
+    auto ret = drawBackground();
+    if(ret != NoError) return ret;
 
+    ret = drawRoads(sim);
+    if(ret != NoError) return ret;
 
-    drawBackground();
-    drawRoads(sim);
-    drawCars(sim);
-
-    /* Render to the window */
-//    SDL_SetRenderTarget(rend, NULL);
-//    SDL_RenderClear(rend);
-//
-//    point_pixels_t window_size = getWindowSize();
-//    const SDL_Rect window_rect = {
-//        0,
-//        0,
-//        static_cast<int>(window_size.x.v),
-//        static_cast<int>(window_size.y.v),
-//    };
-//
-//    
-//    SDL_RenderCopyEx(
-//        rend,
-//        world_tex,
-//        &view,
-//        &window_rect,
-//        0.0,
-//        NULL,
-//        SDL_FLIP_NONE);
+    ret = drawCars(sim);
+    if(ret != NoError) return ret;
 
     SDL_RenderPresent(rend);
     return NoError;
