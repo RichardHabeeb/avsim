@@ -26,12 +26,67 @@ public:
     Point(NumericType x, NumericType y)
         : _p({.x = x, .y = y}) {}
     Point(const Point &p) : _p(p._p) {}
+    Point(const PointType& p) : _p(p) {}
     ~Point() {}
 
     NumericType x() const { return _p.x; }
     NumericType y() const { return _p.y; }
     void x(NumericType v) { _p.x = v; }
     void y(NumericType v) { _p.y = v; }
+
+
+    Point& operator=(const Point& other) {
+        _p = other._p;
+        return *this;
+    }
+
+    Point& operator+=(const Point& other) {
+        _p.x.v += other.x().v;
+        _p.y.v += other.y().v;
+        return *this;
+    }
+
+    Point& operator-=(const Point& other) {
+        _p.x.v -= other.x().v;
+        _p.y.v -= other.y().v;
+        return *this;
+    }
+
+    Point operator*=(NumericType scalar) {
+        _p.x.v *= scalar.v;
+        _p.y.v *= scalar.v;
+        return *this;
+    }
+
+    Point operator/=(NumericType scalar) {
+        _p.x.v /= scalar.v;
+        _p.y.v /= scalar.v;
+        return *this;
+    }
+
+    Point operator+(const Point& other) {
+        Point tmp(*this);
+        tmp += other;
+        return tmp;
+    }
+
+    Point operator-(const Point& other) {
+        Point tmp(*this);
+        tmp -= other;
+        return tmp;
+    }
+
+    Point operator*(NumericType scalar) {
+        Point tmp(*this);
+        tmp *= scalar;
+        return tmp;
+    }
+
+    Point operator/(NumericType scalar) {
+        Point tmp(*this);
+        tmp /= scalar;
+        return tmp;
+    }
 
 private:
     PointType _p;
@@ -104,6 +159,10 @@ public:
 
     NumericType right() const {
         return { _rect.midpoint.x.v + _rect.width.v/2 };
+    }
+
+    NumericType bottom() const {
+        return { _rect.midpoint.y.v + _rect.height.v/2 };
     }
 
 

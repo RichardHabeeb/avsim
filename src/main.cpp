@@ -9,6 +9,9 @@
 #include "src/visualization/vis2d.h"
 #include "src/common/config.h"
 #include "src/roads/segment.h"
+#include "src/roads/sources.h"
+#include "src/vehicles/vehicle.h"
+#include "src/vehicles/two_wheel.h"
 
 extern "C" {
 #include "src/vehicles/simple_car.h"
@@ -105,61 +108,49 @@ simulation::Sim::Action tick(simulation::Sim &sim, visualization::Vis2d &vis) {
     return simulation::Sim::Continue;
 }
 
-
-void setup_car_params(
-    car_t &car,
-    roads::RoadSegment &road,
-    simulation::Sim &sim)
-{
-    car.length = CFG_SPACE_SCALE *
-        (CFG_CAR_MIN_LEN_M + std::rand() %
-            (CFG_CAR_MAX_LEN_M - CFG_CAR_MIN_LEN_M));
-    car.top_spd = CFG_SPACE_SCALE *
-        (CFG_CAR_MIN_TOP_SPD_MS + std::rand() %
-            (CFG_CAR_MAX_TOP_SPD_MS - CFG_CAR_MIN_TOP_SPD_MS));
-
-    car.lane = (rand()%road.lanes());
-    car.front_sensor_range = CFG_CAR_FRONT_RANGE_M*CFG_SPACE_SCALE;
-    car.rear_sensor_range = CFG_CAR_REAR_RANGE_M*CFG_SPACE_SCALE;
-    car.side_sensor_range = CFG_CAR_SIDE_RANGE_LANES;
-    car.top_acc = CFG_CAR_TOP_ACC*CFG_SPACE_SCALE;
-    car.top_dec = CFG_CAR_TOP_DEC*CFG_SPACE_SCALE;
-    car.planner = basic_ai_planner;
-    do {
-        //TODO abort on too many attempts
-        car.pos = ((double)rand() / RAND_MAX) *
-            std::floor(road.length().v);
-    } while(sim.collisionCheck() != simulation::Sim::NoCollision);
-}
-
 #ifdef CFG_SINGLE_ROAD
 static void setup_single_road(simulation::Sim &sim) {
-    auto road = std::make_shared<roads::RoadSegment>();
+    /*three way intersection */
+    for(int i = 0; i < 3; ++i) {
+        auto road = std::make_shared<roads::RoadSegment>();
 
-    for(size_t i = 0; i < CFG_SINGLE_NUM_LANES; ++i) {
-        road->forward_lanes.push_back(
-            std::make_shared<roads::Lane>());
-        road->opposite_lanes.push_back(
-            std::make_shared<roads::Lane>());
+        for(size_t i = 0; i < CFG_SINGLE_NUM_LANES; ++i) {
+            road->forward_lanes.push_back(
+                std::make_shared<roads::Lane>());
+            road->opposite_lanes.push_back(
+                std::make_shared<roads::Lane>());
+        }
+        road->width({CFG_SINGLE_LEN_M});
+        road->height({(double)CFG_SINGLE_LANE_HEIGHT_M * road->lanes()});
+
+        sim.roads.push_back(road);
     }
-    road->width({CFG_SINGLE_LEN_M});
-    road->height({(double)CFG_SINGLE_LANE_HEIGHT_M * road->lanes()});
-    road->x({200});
-    road->y({200});
 
-    sim.roads.push_back(road);
+    sim.roads[0]->x({200});
+    sim.roads[0]->y({200});
 
     auto intersection = std::make_shared<roads::Intersection>();
 
-    intersection->height(road->height());
-    intersection->width(road->height());
-    intersection->left(road->right());
-    intersection->top(road->top());
+    intersection->height(sim.roads[0]->height());
+    intersection->width(sim.roads[0]->height());
+    intersection->left(sim.roads[0]->right());
+    intersection->top(sim.roads[0]->top());
 
-    intersection->roads.push_back(road);
+    intersection->roads.push_back(sim.roads[0]);
+    intersection->roads.push_back(sim.roads[1]);
+    intersection->roads.push_back(sim.roads[2]);
 
     sim.intersections.push_back(intersection);
 
+
+    sim.roads[1]->left(intersection->right());
+    sim.roads[1]->top(sim.roads[0]->top());
+
+    sim.roads[2]->x(intersection->x());
+    sim.roads[2]->y({intersection->bottom().v +
+        sim.roads[2]->length().v/2.0});
+
+    sim.roads[2]->rotation({M_PI/2.0});
 }
 #endif
 
@@ -176,13 +167,9 @@ int main(int argc, char* argv[]) {
 
 #ifdef CFG_SINGLE_ROAD
     setup_single_road(sim);
-    for(size_t i = 0; i < CFG_NUM_CARS; ++i) {
-        auto car = std::make_shared<car_t>();
-        setup_car_params(*car, *sim.roads[0], sim);
-        sim.cars.push_back(car);
-    }
 #endif
     if(vis.setup(sim) != visualization::Vis2d::NoError) {
+        std::cout << "Faied to setup visualization\n";
         return -1;
     }
 

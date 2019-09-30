@@ -12,3 +12,17 @@ cc_library(
 		"//src/common:common",
 	]
 )
+
+cc_library(
+    name = "vehicles",
+    srcs = [
+        "two_wheel.cpp",
+    ],
+    hdrs = [
+        "vehicle.h",
+        "two_wheel.h",
+    ],
+    deps = [
+        "//src/common:common",
+    ]
+)

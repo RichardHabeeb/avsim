@@ -8,7 +8,7 @@ cc_binary(
 		"//src/visualization:vis2d",
 		"//src/simulation:sim",
 		"//src/roads:roads",
-		"//src/vehicles:simple_car",
+		"//src/vehicles:vehicles",
 		"//src/planner:basic_planner",
 	],
 )

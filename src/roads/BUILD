@@ -6,6 +6,7 @@ cc_library(
 	],
 	hdrs = [
 		"segment.h",
+        "sources.h",
 	],
 	deps = [
 		"//src/vehicles:simple_car",

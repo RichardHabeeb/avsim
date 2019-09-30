@@ -1,6 +1,7 @@
 #include <cstdint>
 #include <algorithm>
 #include <iostream>
+#include <math.h>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL2_gfxPrimitives.h>
@@ -65,9 +66,6 @@ Vis2d::Error Vis2d::setup(simulation::Sim &sim) {
     if(SDL_Init(SDL_INIT_VIDEO) < 0) {
         return InternalError;
     }
-    SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
-    SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 8);
-    SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, 1);
 
     window = SDL_CreateWindow(
             "Autonomous Car Simulator (Press SPACE to pause, Q to quit)",
@@ -79,6 +77,7 @@ Vis2d::Error Vis2d::setup(simulation::Sim &sim) {
             SDL_WINDOW_RESIZABLE |
             SDL_WINDOW_OPENGL);
     if(window == NULL) {
+        std::cout << "Failed to create sdl window\n";
         return InternalError;
     }
 
@@ -366,7 +365,7 @@ Vis2d::Error Vis2d::drawRoads(simulation::Sim &sim) {
                          tex,
                          NULL,
                          &r,
-                         0.0,
+                         road->rotation().v*180.0/M_PI,
                          NULL,
                          SDL_FLIP_NONE);
     }
