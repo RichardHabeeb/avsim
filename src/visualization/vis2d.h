@@ -7,6 +7,7 @@
 #include "src/roads/segment.h"
 #include "src/simulation/sim.h"
 #include "src/common/ctypes.h"
+#include "src/vehicles/vehicle.h"
 
 
 namespace avsim {
@@ -14,15 +15,22 @@ namespace visualization {
 
 class Vis2d : public Visualization {
 public:
-    using RoadTexPair = std::pair<SDL_Texture *, std::shared_ptr<roads::RoadSegment>>;
-    using IntersectionTexPair = std::pair<SDL_Texture *, std::shared_ptr<roads::Intersection>>;
+    using RoadTexPair = std::pair<
+        SDL_Texture *,
+        std::shared_ptr<roads::RoadSegment>>;
+    using IntersectionTexPair = std::pair<
+        SDL_Texture *,
+        std::shared_ptr<roads::Intersection>>;
+    using CarTexPair = std::pair<
+        SDL_Texture *,
+        std::shared_ptr<vehicles::Vehicle>>;
 
 	Vis2d() = default;
 	~Vis2d();
 
 	Error setup(simulation::Sim &sim);
 	Error draw(simulation::Sim &sim);
-	Error mapPointToDrawnObject(simulation::Sim &sim, SDL_Point, car_t **, roads::RoadSegment **);
+	//Error mapPointToDrawnObject(simulation::Sim &sim, SDL_Point, car_t **, roads::RoadSegment **);
 
 	void setScale(double s);
 	void setRotation(uint16_t r);
@@ -88,6 +96,7 @@ private:
 
     std::vector<RoadTexPair> _roads;
     std::vector<IntersectionTexPair> _intersections;
+    std::vector<CarTexPair> _cars;
 };
 
 } /* visualization */

@@ -14,7 +14,6 @@
 #include "src/vehicles/two_wheel.h"
 
 extern "C" {
-#include "src/vehicles/simple_car.h"
 #include "src/planner/basic_ai.h"
 }
 
@@ -46,6 +45,7 @@ static simulation::Sim::Action handle_events(
             }
         } else if(e.type == SDL_MOUSEBUTTONDOWN) {
             if(e.button.button == SDL_BUTTON_LEFT) {
+                /*
                 car_t *clicked_car = NULL;
                 roads::RoadSegment *clicked_road = NULL;
                 vis.mapPointToDrawnObject(
@@ -56,6 +56,7 @@ static simulation::Sim::Action handle_events(
                 if(clicked_car != NULL) {
                     clicked_car->selected = !clicked_car->selected;
                 }
+                */
             }
 
         } else if(e.type == SDL_MOUSEBUTTONUP) {
@@ -151,6 +152,19 @@ static void setup_single_road(simulation::Sim &sim) {
         sim.roads[2]->length().v/2.0});
 
     sim.roads[2]->rotation({M_PI/2.0});
+
+
+    auto car = std::make_shared<vehicles::TwoWheel>();
+    car->width({4.0});
+    car->height({2.0});
+    car->wheelBase({3.5});
+    car->steerAngle({M_PI/4.0});
+    car->x({200.0});
+    car->y({200.0});
+    car->velocity({5.0});
+
+    sim.cars.push_back(car);
+
 }
 #endif
 

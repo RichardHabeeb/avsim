@@ -12,10 +12,8 @@
 #include "src/common/config.h"
 #include "src/common/ctypes.h"
 #include "src/common/algorithm.h"
+#include "src/vehicles/vehicle.h"
 
-extern "C" {
-#include "src/vehicles/simple_car.h"
-}
 
 namespace avsim {
 namespace visualization {
@@ -178,7 +176,7 @@ Vis2d::Error Vis2d::setup(simulation::Sim &sim) {
             toPixels(inter->width()).v,
             toPixels(inter->height()).v);
         if(inter_texture == NULL) {
-            std::cout << "Error: road texture invalid: "
+            std::cout << "Error: intersection texture invalid: "
                 << toPixels(inter->width()).v << "x"
                 << toPixels(inter->height()).v << "\n";
         }
@@ -187,6 +185,30 @@ Vis2d::Error Vis2d::setup(simulation::Sim &sim) {
         SDL_RenderClear(rend);
 
         _intersections.push_back({inter_texture, inter});
+    }
+
+
+    _cars.reserve(sim.cars.size());
+    for(auto it = sim.cars.begin();
+        it != sim.cars.end(); ++it)
+    {
+        auto car = *it;
+        auto car_texture = SDL_CreateTexture(
+            rend,
+            SDL_PIXELFORMAT_RGBA8888,
+            SDL_TEXTUREACCESS_TARGET,
+            toPixels(car->width()).v,
+            toPixels(car->height()).v);
+        if(car_texture == NULL) {
+            std::cout << "Error: car texture invalid: "
+                << toPixels(car->width()).v << "x"
+                << toPixels(car->height()).v << "\n";
+        }
+        SDL_SetRenderTarget(rend, car_texture);
+        SDL_SetRenderDrawColor(rend, 0xFF, 0x00, 0x00, 0xFF);
+        SDL_RenderClear(rend);
+
+        _cars.push_back({car_texture, car});
     }
 
     return NoError;
@@ -200,31 +222,33 @@ Vis2d::~Vis2d() {
     SDL_Quit();
 }
 
-Vis2d::Error Vis2d::mapPointToDrawnObject(
-    simulation::Sim &sim,
-    SDL_Point p,
-    car_t **car_ret,
-    roads::RoadSegment **road_ret)
-{
+//
+//Vis2d::Error Vis2d::mapPointToDrawnObject(
+//    simulation::Sim &sim,
+//    SDL_Point p,
+//    car_t **car_ret,
+//    roads::RoadSegment **road_ret)
+//{
+//
+//    if(road_ret != NULL) {
+//        for(auto it = sim.roads.begin();
+//            it != sim.roads.end(); ++it)
+//        {
+//            /* TODO */
+//        }
+//    }
+//
+//    if(car_ret != NULL) {
+//        for(auto it = sim.cars.begin();
+//            it != sim.cars.end(); ++it)
+//        {
+//            /* TODO */
+//        }
+//    }
+//
+//    return NoError;
+//}
 
-    if(road_ret != NULL) {
-        for(auto it = sim.roads.begin();
-            it != sim.roads.end(); ++it)
-        {
-            /* TODO */
-        }
-    }
-
-    if(car_ret != NULL) {
-        for(auto it = sim.cars.begin();
-            it != sim.cars.end(); ++it)
-        {
-            /* TODO */
-        }
-    }
-
-    return NoError;
-}
 
 
 Vis2d::Error Vis2d::drawBackground() {
@@ -397,6 +421,21 @@ Vis2d::Error Vis2d::drawIntersections(simulation::Sim &sim) {
 
 
 Vis2d::Error Vis2d::drawCars(simulation::Sim &sim) {
+    for(auto it = _cars.begin(); it != _cars.end(); ++it) {
+        auto tex = (*it).first;
+        auto car = (*it).second;
+
+        /* blit the texture to the world */
+        SDL_Rect r = toSDLRect(*car);
+        SDL_SetRenderTarget(rend, NULL);
+        SDL_RenderCopyEx(rend,
+                         tex,
+                         NULL,
+                         &r,
+                         car->rotation().v*180.0/M_PI,
+                         NULL,
+                         SDL_FLIP_NONE);
+    }
     return NoError;
 }
 

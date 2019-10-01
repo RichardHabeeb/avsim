@@ -12,7 +12,7 @@ cc_library(
 	deps = [
 		"//src/common:common",
 		"//src/roads:roads",
-		"//src/vehicles:simple_car",
+		"//src/vehicles:vehicles",
 		"//src/simulation:sim",
 	],
 	linkopts = [

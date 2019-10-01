@@ -5,10 +5,7 @@
 #include "src/common/types.h"
 #include "src/common/ctypes.h"
 #include "src/roads/segment.h"
-
-extern "C" {
-#include "src/vehicles/simple_car.h"
-}
+#include "src/vehicles/vehicle.h"
 
 namespace avsim {
 namespace simulation {
@@ -22,7 +19,7 @@ public:
     using IntersectionCollection =
         std::vector<std::shared_ptr<roads::Intersection>>;
     using CarCollection =
-        std::vector<std::shared_ptr<car_t>>;
+        std::vector<std::shared_ptr<vehicles::Vehicle>>;
 
     enum Collision {
         NoCollision,

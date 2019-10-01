@@ -20,7 +20,7 @@ void Sim::tick() {
     for(auto it = cars.begin();
         it != cars.end(); ++it)
     {
-        //(*it)->tick();
+        (*it)->tick();
     }
 }
 

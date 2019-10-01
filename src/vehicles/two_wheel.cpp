@@ -28,7 +28,7 @@ void TwoWheel::tick() {
         (orientation * half_base);
 
     //TODO dt!!
-    meters_t d = {velocity().v * 1};
+    meters_t d = {velocity().v * 0.1};
 
     front_wheel += turn_orientation * d;
     rear_wheel += orientation * d;
@@ -37,6 +37,11 @@ void TwoWheel::tick() {
         (front_wheel + rear_wheel) / meters_t({2.0});
 
     midpoint({.x=location.x(), .y=location.y()});
+    rotation({std::atan2(
+        front_wheel.y().v - rear_wheel.y().v,
+        front_wheel.x().v - rear_wheel.x().v
+    )});
+    //TODO rotation change
     //TODO update velocty, acc, jerk
 
 }

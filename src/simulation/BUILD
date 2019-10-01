@@ -9,7 +9,7 @@ cc_library(
 		"sim.h",
 	],
 	deps = [
-		"//src/vehicles:simple_car",
+		"//src/vehicles:vehicles",
 		"//src/roads:roads",
 	],
 )
