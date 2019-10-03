@@ -3,6 +3,7 @@
 #include "src/common/types.h"
 #include "src/common/ctypes.h"
 #include "src/vehicles/vehicle.h"
+#include "src/vehicles/two_wheel_damn.h"
 
 
 namespace avsim {
@@ -22,6 +23,7 @@ public:
 protected:
     meters_t _wheel_base;
     radians_t _steer_angle;
+    TwoWheelDamn _controller;
 };
 
 }

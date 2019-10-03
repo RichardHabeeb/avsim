@@ -161,7 +161,9 @@ static void setup_single_road(simulation::Sim &sim) {
     car->steerAngle({M_PI/4.0});
     car->x({200.0});
     car->y({200.0});
-    car->velocity({5.0});
+    car->velocity({0.0});
+    car->acceleration({0.0});
+    car->jerk({0.1});
 
     sim.cars.push_back(car);
 

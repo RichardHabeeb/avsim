@@ -27,8 +27,8 @@ void TwoWheel::tick() {
     common::PointMeters rear_wheel = location -
         (orientation * half_base);
 
-    //TODO dt!!
-    meters_t d = {velocity().v * 0.1};
+    double t = tickDuration().v / 1000000000.0;
+    meters_t d = {velocity().v * t};
 
     front_wheel += turn_orientation * d;
     rear_wheel += orientation * d;
@@ -41,9 +41,11 @@ void TwoWheel::tick() {
         front_wheel.y().v - rear_wheel.y().v,
         front_wheel.x().v - rear_wheel.x().v
     )});
-    //TODO rotation change
-    //TODO update velocty, acc, jerk
 
+    velocity({velocity().v + acceleration().v * t});
+    acceleration({acceleration().v + jerk().v * t});
+
+    auto traj = _controller.tick();
 }
 
 } /* vehicles */

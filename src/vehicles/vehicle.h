@@ -26,8 +26,15 @@ public:
     radians_t rotation() const { return _rotation; }
     void rotation(radians_t v) { _rotation = v; }
 
+    // TODO saturate values
     meters_t velocity() const { return _velocity; }
     void velocity(meters_t v) { _velocity = v; }
+
+    meters_t acceleration() const { return _acceleration; }
+    void acceleration(meters_t v) { _acceleration = v; }
+
+    meters_t jerk() const { return _jerk; }
+    void jerk(meters_t v) { _jerk = v; }
 
     virtual void tick() = 0;
 protected:

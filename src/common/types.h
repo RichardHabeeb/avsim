@@ -1,7 +1,10 @@
 #pragma once
 
+
+#include <vector>
 #include <type_traits>
 #include "src/common/ctypes.h"
+#include "src/common/config.h"
 
 namespace avsim {
 namespace common {
@@ -11,6 +14,8 @@ template <typename T>
 class Tickable {
 public:
     virtual T tick() = 0;
+
+    nanoseconds_t tickDuration() const { return default_cfg.tick_duration; }
 };
 
 
@@ -23,11 +28,12 @@ public:
 
      using NumericType = decltype(PointType::x);
 
+    ~Point() {}
+    Point() : _p({0}) {}
     Point(NumericType x, NumericType y)
         : _p({.x = x, .y = y}) {}
     Point(const Point &p) : _p(p._p) {}
     Point(const PointType& p) : _p(p) {}
-    ~Point() {}
 
     NumericType x() const { return _p.x; }
     NumericType y() const { return _p.y; }
@@ -114,6 +120,7 @@ public:
     using NumericType = decltype(RectType::width);
     using PointType = decltype(RectType::midpoint);
 
+    ~Rect() {};
     Rect() : _rect({0}) {}
     Rect(PointType p, NumericType w, NumericType h)
         : _rect({.midpoint=p, .width=w, .height=h}) {}
@@ -128,7 +135,6 @@ public:
         {}
 
     Rect(const Rect &r) : _rect(r._rect) {}
-    ~Rect() {}
 
     NumericType x() const { return _rect.midpoint.x; }
     NumericType y() const { return _rect.midpoint.y; }
@@ -174,6 +180,19 @@ protected:
 
 using RectPixels = Rect<rect_pixels_t>;
 using RectMeters = Rect<rect_meters_t>;
+
+
+class Trajectory {
+public:
+    using PointCollection = std::vector<PointMeters>;
+
+    ~Trajectory() {}
+    Trajectory() : points(0) {}
+    Trajectory(size_t s) : points(s) {}
+
+    PointCollection points;
+};
+
 
 } /* common */
 } /* avsim */
