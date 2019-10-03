@@ -3,10 +3,19 @@
 #include "src/common/types.h"
 #include "src/common/ctypes.h"
 #include "src/vehicles/vehicle.h"
-#include "src/vehicles/two_wheel_damn.h"
+#include "src/vehicles/damn.h"
 
 namespace avsim {
 namespace vehicles {
+
+
+class TwoWheelDamn : public Damn<common::Trajectory> {
+public:
+    ~TwoWheelDamn() {}
+
+    virtual common::Trajectory tick();
+};
+
 
 class TwoWheel : public Vehicle {
 public:
@@ -19,10 +28,12 @@ public:
     radians_t steerAngle() const { return _steer_angle; }
     void steerAngle(radians_t v) { _steer_angle = v; }
 
+
+    TwoWheelDamn controller;
+
 protected:
     meters_t _wheel_base;
     radians_t _steer_angle;
-    TwoWheelDamn _controller;
 };
 
 } /* vehicles */

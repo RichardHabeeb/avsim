@@ -12,10 +12,7 @@
 #include "src/roads/sources.h"
 #include "src/vehicles/vehicle.h"
 #include "src/vehicles/two_wheel.h"
-
-extern "C" {
-#include "src/planner/basic_ai.h"
-}
+#include "src/vehicles/two_wheel_behaviors.h"
 
 
 namespace avsim {
@@ -45,18 +42,6 @@ static simulation::Sim::Action handle_events(
             }
         } else if(e.type == SDL_MOUSEBUTTONDOWN) {
             if(e.button.button == SDL_BUTTON_LEFT) {
-                /*
-                car_t *clicked_car = NULL;
-                roads::RoadSegment *clicked_road = NULL;
-                vis.mapPointToDrawnObject(
-                        sim,
-                        (SDL_Point) { e.button.x, e.button.y },
-                        &clicked_car,
-                        &clicked_road);
-                if(clicked_car != NULL) {
-                    clicked_car->selected = !clicked_car->selected;
-                }
-                */
             }
 
         } else if(e.type == SDL_MOUSEBUTTONUP) {
@@ -172,6 +157,9 @@ static void setup_single_road(simulation::Sim &sim) {
     traj->points[3] = point_meters_t({.x = {500.0}, .y = {270.0}});
 
     car->targetTraj(traj);
+
+    car->controller.behaviors.push_back(std::make_shared<
+        vehicles::behaviors::TurnTowardsTarget>(car));
 
     sim.cars.push_back(car);
 

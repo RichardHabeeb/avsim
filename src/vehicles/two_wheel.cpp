@@ -45,8 +45,36 @@ void TwoWheel::tick() {
     velocity({velocity().v + acceleration().v * t});
     acceleration({acceleration().v + jerk().v * t});
 
-    auto traj = _controller.tick();
+    auto traj = controller.tick();
 }
+
+
+
+common::Trajectory TwoWheelDamn::tick() {
+
+    Ballot<common::Trajectory> ballot(3);
+    // TODO create good ballot
+
+    std::vector<int> totals(ballot.options.size());
+    size_t best = 0;
+
+    for(auto it = behaviors.begin();
+        it != behaviors.end(); ++it)
+    {
+        auto result = (*it)->vote(ballot);
+
+        for(size_t i = 0;
+            i < result.options.size() &&
+            i < ballot.options.size(); ++i)
+        {
+            totals[i] += result.options[i];
+            best = std::max(i, best);
+        }
+    }
+
+    return ballot.options[best];
+}
+
 
 } /* vehicles */
 } /* avsim */

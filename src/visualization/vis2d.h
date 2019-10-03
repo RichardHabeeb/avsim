@@ -30,7 +30,6 @@ public:
 
 	Error setup(simulation::Sim &sim);
 	Error draw(simulation::Sim &sim);
-	//Error mapPointToDrawnObject(simulation::Sim &sim, SDL_Point, car_t **, roads::RoadSegment **);
 
 	void setScale(double s);
 	void setRotation(uint16_t r);

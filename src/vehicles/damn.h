@@ -11,13 +11,18 @@ namespace vehicles {
 
 class Vote {
 public:
-    int num;
-    std::shared_ptr<common::Trajectory> traj;
+    Vote(size_t s) : options(s) {}
+    ~Vote() {}
+
+    std::vector<int> options;
 };
 
 template<typename OptionType>
 class Ballot {
 public:
+    Ballot(size_t s) : options(s) {}
+    ~Ballot() {}
+
     std::vector<OptionType> options;
 };
 
