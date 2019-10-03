@@ -61,12 +61,22 @@ private:
         pixels_t stripe_h,
         pixels_t y_offset);
 
+    SDL_Point * trajToSDLPoints(
+        const std::shared_ptr<common::Trajectory> traj);
+
 
     constexpr pixels_t toPixels(meters_t m) const
     {
         return {
             static_cast<decltype(pixels_t::v)>(
                 m.v * _pixels_per_meter)
+        };
+    }
+
+    constexpr SDL_Point toSDLPoint(common::PointMeters &p) const {
+        return {
+            .x = static_cast<int>(toPixels(p.x()).v + _world_origin.x.v),
+            .y = static_cast<int>(toPixels(p.y()).v + _world_origin.y.v),
         };
     }
 

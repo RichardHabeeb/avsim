@@ -165,6 +165,14 @@ static void setup_single_road(simulation::Sim &sim) {
     car->acceleration({0.0});
     car->jerk({0.1});
 
+    auto traj = std::make_shared<common::Trajectory>(4);
+    traj->points[0] = point_meters_t({.x = {200.0}, .y = {200.0}});
+    traj->points[1] = point_meters_t({.x = {300.0}, .y = {210.0}});
+    traj->points[2] = point_meters_t({.x = {400.0}, .y = {230.0}});
+    traj->points[3] = point_meters_t({.x = {500.0}, .y = {270.0}});
+
+    car->targetTraj(traj);
+
     sim.cars.push_back(car);
 
 }

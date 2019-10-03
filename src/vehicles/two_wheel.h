@@ -5,7 +5,6 @@
 #include "src/vehicles/vehicle.h"
 #include "src/vehicles/two_wheel_damn.h"
 
-
 namespace avsim {
 namespace vehicles {
 
@@ -26,5 +25,5 @@ protected:
     TwoWheelDamn _controller;
 };
 
-}
+} /* vehicles */
 } /* avsim */

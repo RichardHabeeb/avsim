@@ -33,7 +33,6 @@ protected:
     double _weight;
 };
 
-
 template<typename OptionType>
 class Damn : public common::Tickable<OptionType> {
 public:

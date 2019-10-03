@@ -420,6 +420,19 @@ Vis2d::Error Vis2d::drawIntersections(simulation::Sim &sim) {
 }
 
 
+SDL_Point* Vis2d::trajToSDLPoints(
+    const std::shared_ptr<common::Trajectory> traj)
+{
+    auto ret = new SDL_Point[traj->points.size()];
+     size_t i = 0;
+    for(auto it = traj->points.begin(); it != traj->points.end(); ++it, ++i)
+    {
+        ret[i] = toSDLPoint(*it);
+    }
+    return ret;
+}
+
+
 Vis2d::Error Vis2d::drawCars(simulation::Sim &sim) {
     for(auto it = _cars.begin(); it != _cars.end(); ++it) {
         auto tex = (*it).first;
@@ -435,9 +448,18 @@ Vis2d::Error Vis2d::drawCars(simulation::Sim &sim) {
                          car->rotation().v*180.0/M_PI,
                          NULL,
                          SDL_FLIP_NONE);
+
+        /* draw the trajectory */
+        if(car->targetTraj()) {
+            SDL_SetRenderDrawColor(rend, 0x00, 0xFF, 0x00, 0xFF);
+            auto pts = trajToSDLPoints(car->targetTraj());
+            SDL_RenderDrawLines(rend, pts, car->targetTraj()->points.size());
+            delete pts;
+        }
     }
     return NoError;
 }
+
 
 
 Vis2d::Error Vis2d::draw(simulation::Sim &sim) {

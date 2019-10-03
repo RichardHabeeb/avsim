@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include "src/common/types.h"
 #include "src/common/ctypes.h"
 
@@ -17,6 +18,8 @@ public:
         _acceleration({0}),
         _jerk({0})
     {}
+
+    virtual ~Vehicle() {}
 
 
     /* alias of width */
@@ -36,6 +39,9 @@ public:
     meters_t jerk() const { return _jerk; }
     void jerk(meters_t v) { _jerk = v; }
 
+    std::shared_ptr<common::Trajectory> targetTraj() const { return _target_traj; }
+    void targetTraj(std::shared_ptr<common::Trajectory> v) { _target_traj = v; }
+
     virtual void tick() = 0;
 protected:
     radians_t _rotation;
@@ -45,6 +51,9 @@ protected:
     meters_t _max_acceleration;
     meters_t _jerk;
     meters_t _max_jerk;
+
+    /* Target trajectory output by the deliberative planner */
+    std::shared_ptr<common::Trajectory> _target_traj;
 };
 
 } /* vehicles */

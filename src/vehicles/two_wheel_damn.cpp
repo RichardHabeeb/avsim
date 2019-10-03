@@ -12,5 +12,5 @@ common::Trajectory TwoWheelDamn::tick() {
     return t;
 }
 
-}
+} /* vehicles */
 } /* avsim */

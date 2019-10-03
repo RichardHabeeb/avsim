@@ -46,6 +46,11 @@ public:
         return *this;
     }
 
+    Point& operator=(const PointType& other) {
+        _p = other;
+        return *this;
+    }
+
     Point& operator+=(const Point& other) {
         _p.x.v += other.x().v;
         _p.y.v += other.y().v;
