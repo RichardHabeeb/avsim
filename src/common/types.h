@@ -2,7 +2,9 @@
 
 
 #include <vector>
+#include <iostream>
 #include <type_traits>
+#include <algorithm>
 #include "src/common/ctypes.h"
 #include "src/common/config.h"
 
@@ -13,9 +15,17 @@ namespace common {
 template <typename T>
 class Tickable {
 public:
+
+    ~Tickable() {}
+    Tickable() : _duration(default_cfg.tick_duration) {}
     virtual T tick() = 0;
 
-    nanoseconds_t tickDuration() const { return default_cfg.tick_duration; }
+    nanoseconds_t tickDuration() const{
+        return _duration;
+    }
+    void tickDuration(nanoseconds_t v) { _duration = v; }
+private:
+    nanoseconds_t _duration;
 };
 
 
@@ -34,6 +44,7 @@ public:
         : _p({.x = x, .y = y}) {}
     Point(const Point &p) : _p(p._p) {}
     Point(const PointType& p) : _p(p) {}
+    //Point(const Point&& p) : _p(p._p) {}
 
     NumericType x() const { return _p.x; }
     NumericType y() const { return _p.y; }
@@ -97,6 +108,69 @@ public:
         Point tmp(*this);
         tmp /= scalar;
         return tmp;
+    }
+
+
+    static bool checkSegmentIntersect(
+        const std::pair<Point, Point> &a,
+        const std::pair<Point, Point> &b)
+    {
+        /* Find the four orientations needed
+         * for general and special cases */
+        auto o1 = checkOrientation(a.first, a.second, b.first);
+        auto o2 = checkOrientation(a.first, a.second, b.second);
+        auto o3 = checkOrientation(b.first, b.second, a.first);
+        auto o4 = checkOrientation(b.first, b.second, a.second);
+
+        return (
+            /* general */
+            (o1 != o2 && o3 != o4) ||
+            /* special */
+            (o1 == Colinear &&
+                checkColinearOnSegment(b.first, a)) ||
+            (o2 == Colinear &&
+                checkColinearOnSegment(b.second, a)) ||
+            (o3 == Colinear &&
+                checkColinearOnSegment(a.first, b)) ||
+            (o4 == Colinear &&
+                checkColinearOnSegment(a.second, b)));
+    }
+
+    static bool checkColinearOnSegment(
+        Point q,
+        const std::pair<Point,Point> & seg)
+    {
+
+        return (
+            q._p.x.v <= std::max(
+                seg.first._p.x.v, seg.second._p.x.v) &&
+            q._p.x.v >= std::min(
+                seg.first._p.x.v, seg.second._p.x.v) &&
+            q._p.y.v <= std::max(
+                seg.first._p.y.v, seg.second._p.y.v) &&
+            q._p.y.v >= std::min(
+                seg.first._p.y.v, seg.second._p.y.v));
+    }
+
+    enum Orientation{
+        Colinear,
+        Clockwise,
+        CounterClockwise
+    };
+    static Orientation checkOrientation(
+        const Point &p,
+        const Point &q,
+        const Point &r)
+    {
+        int val = (q._p.y.v - p._p.y.v) *
+                  (r._p.x.v - q._p.x.v)
+                  -
+                  (q._p.x.v - p._p.x.v) *
+                  (r._p.y.v - q._p.y.v);
+
+        if (val == 0) return Colinear;
+
+        return (val > 0)? Clockwise : CounterClockwise;
     }
 
 private:
@@ -192,8 +266,15 @@ public:
     using PointCollection = std::vector<PointMeters>;
 
     ~Trajectory() {}
-    Trajectory() : points(0) {}
+
+    Trajectory() {}
     Trajectory(size_t s) : points(s) {}
+    Trajectory(const Trajectory &) = default;
+    Trajectory(Trajectory &&) = default;
+    Trajectory & operator=(Trajectory && v) = default;
+    Trajectory & operator=(const Trajectory & v) = default;
+
+
 
     PointCollection points;
 };

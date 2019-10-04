@@ -1,4 +1,5 @@
 #include <math.h>
+#include <iostream>
 
 #include "src/common/types.h"
 #include "src/common/ctypes.h"
@@ -7,7 +8,7 @@
 namespace avsim {
 namespace vehicles {
 
-void TwoWheel::tick() {
+void TwoWheel::updateFrame() {
     common::PointMeters location(midpoint());
 
     common::PointMeters orientation(
@@ -44,18 +45,47 @@ void TwoWheel::tick() {
 
     velocity({velocity().v + acceleration().v * t});
     acceleration({acceleration().v + jerk().v * t});
+}
 
-    auto traj = controller.tick();
+void TwoWheel::tick() {
+    updateFrame();
+    controlTraj(holdVote());
 }
 
 
+common::Trajectory TwoWheel::predictTrajectory(
+    size_t n_ticks,
+    radians_t steer_angle,
+    meters_t jerk)
+{
+    TwoWheel tmp(*this);
+    tmp.tickDuration({tmp.tickDuration().v * 50});
+    tmp.steerAngle(steer_angle);
+    tmp.jerk(jerk);
 
-common::Trajectory TwoWheelDamn::tick() {
+    common::Trajectory ret(n_ticks+1);
+    ret.points[0] = tmp.midpoint();
 
-    Ballot<common::Trajectory> ballot(3);
-    // TODO create good ballot
+    for(size_t i = 0; i < n_ticks; ++i) {
+        tmp.updateFrame();
+        ret.points[i+1] = tmp.midpoint();
+    }
 
-    std::vector<int> totals(ballot.options.size());
+    return ret;
+}
+
+
+common::Trajectory TwoWheel::holdVote() {
+    Ballot<common::Trajectory> ballot;
+
+    ballot.options.push_back(predictTrajectory(
+        5, { steerAngle().v + 0 }, jerk()));
+    ballot.options.push_back(predictTrajectory(
+        5, { steerAngle().v + M_PI/4 }, jerk()));
+    ballot.options.push_back(predictTrajectory(
+        5, { steerAngle().v - M_PI/4 }, jerk()));
+
+    std::vector<int> totals(ballot.options.size(), 0);
     size_t best = 0;
 
     for(auto it = behaviors.begin();
@@ -68,8 +98,17 @@ common::Trajectory TwoWheelDamn::tick() {
             i < ballot.options.size(); ++i)
         {
             totals[i] += result.options[i];
-            best = std::max(i, best);
+            std::cout << totals[i] << " ";
+            best = (totals[i] > totals[best]) ? i : best;
         }
+        std::cout << "\n";
+    }
+
+    if(best == 1) {
+        steerAngle({ steerAngle().v + M_PI/64 });
+    }
+    if(best == 2) {
+        steerAngle({ steerAngle().v - M_PI/64 });
     }
 
     return ballot.options[best];

@@ -143,22 +143,23 @@ static void setup_single_road(simulation::Sim &sim) {
     car->width({4.0});
     car->height({2.0});
     car->wheelBase({3.5});
-    car->steerAngle({M_PI/4.0});
+    car->steerAngle({0.0});
     car->x({200.0});
     car->y({200.0});
-    car->velocity({0.0});
+    car->velocity({5.0});
     car->acceleration({0.0});
-    car->jerk({0.1});
+    car->jerk({0.0});
 
-    auto traj = std::make_shared<common::Trajectory>(4);
-    traj->points[0] = point_meters_t({.x = {200.0}, .y = {200.0}});
-    traj->points[1] = point_meters_t({.x = {300.0}, .y = {210.0}});
-    traj->points[2] = point_meters_t({.x = {400.0}, .y = {230.0}});
-    traj->points[3] = point_meters_t({.x = {500.0}, .y = {270.0}});
+    auto traj = common::Trajectory(2);
+    traj.points[0] = point_meters_t({.x = {200.0}, .y = {202.5}});
+    traj.points[1] = point_meters_t({.x = {300.0}, .y = {202.5}});
+//    traj.points[2] = point_meters_t({.x = {310.0}, .y = {230.0}});
+//    traj.points[3] = point_meters_t({.x = {325.0}, .y = {270.0}});
 
     car->targetTraj(traj);
+    car->controlTraj({0});
 
-    car->controller.behaviors.push_back(std::make_shared<
+    car->behaviors.push_back(std::make_shared<
         vehicles::behaviors::TurnTowardsTarget>(car));
 
     sim.cars.push_back(car);

@@ -14,9 +14,24 @@ class Vehicle :
 public:
 
     Vehicle() :
+        common::Tickable<void>(),
+        common::RectMeters(),
         _velocity({0}),
         _acceleration({0}),
         _jerk({0})
+    {}
+    Vehicle(const Vehicle &other) :
+        common::Tickable<void>(other),
+        common::RectMeters(other),
+        _rotation(other._rotation),
+        _velocity(other._velocity),
+        _max_velocity(other._max_velocity),
+        _acceleration(other._acceleration),
+        _max_acceleration(other._max_acceleration),
+        _jerk(other._jerk),
+        _max_jerk(other._max_jerk),
+        _target_traj(other._target_traj),
+        _control_traj(other._control_traj)
     {}
 
     virtual ~Vehicle() {}
@@ -39,8 +54,11 @@ public:
     meters_t jerk() const { return _jerk; }
     void jerk(meters_t v) { _jerk = v; }
 
-    std::shared_ptr<common::Trajectory> targetTraj() const { return _target_traj; }
-    void targetTraj(std::shared_ptr<common::Trajectory> v) { _target_traj = v; }
+    common::Trajectory targetTraj() const { return _target_traj; }
+    void targetTraj(common::Trajectory v) { _target_traj = v; }
+
+    common::Trajectory controlTraj() const { return _control_traj; }
+    void controlTraj(common::Trajectory v) { _control_traj = v; }
 
     virtual void tick() = 0;
 protected:
@@ -53,7 +71,8 @@ protected:
     meters_t _max_jerk;
 
     /* Target trajectory output by the deliberative planner */
-    std::shared_ptr<common::Trajectory> _target_traj;
+    common::Trajectory _target_traj;
+    common::Trajectory _control_traj;
 };
 
 } /* vehicles */

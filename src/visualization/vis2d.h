@@ -61,7 +61,7 @@ private:
         pixels_t y_offset);
 
     SDL_Point * trajToSDLPoints(
-        const std::shared_ptr<common::Trajectory> traj);
+        const common::Trajectory& traj);
 
 
     constexpr pixels_t toPixels(meters_t m) const
@@ -72,7 +72,7 @@ private:
         };
     }
 
-    constexpr SDL_Point toSDLPoint(common::PointMeters &p) const {
+    constexpr SDL_Point toSDLPoint(const common::PointMeters &p) const {
         return {
             .x = static_cast<int>(toPixels(p.x()).v + _world_origin.x.v),
             .y = static_cast<int>(toPixels(p.y()).v + _world_origin.y.v),
@@ -80,7 +80,7 @@ private:
     }
 
 
-    constexpr SDL_Rect toSDLRect(common::RectMeters &r) const
+    constexpr SDL_Rect toSDLRect(const common::RectMeters &r) const
     {
         return {
             .x = static_cast<int>(toPixels(r.left()).v + _world_origin.x.v),

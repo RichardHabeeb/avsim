@@ -20,6 +20,7 @@ public:
 template<typename OptionType>
 class Ballot {
 public:
+    Ballot() {}
     Ballot(size_t s) : options(s) {}
     ~Ballot() {}
 
@@ -39,13 +40,14 @@ protected:
 };
 
 template<typename OptionType>
-class Damn : public common::Tickable<OptionType> {
+class Damn {
 public:
     using BehaviorCollection =
         std::vector<std::shared_ptr<DamnBehavior<OptionType>>>;
 
     ~Damn() {}
-    virtual OptionType tick() = 0;
+    Damn() {}
+    virtual OptionType holdVote() = 0;
 
     BehaviorCollection behaviors;
 };
